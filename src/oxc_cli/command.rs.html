@@ -78,6 +78,19 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{builder::ValueParser, Arg, Command <span class="kw">as </span>ClapCommand};
 
 <span class="attr">#[derive(Debug)]
@@ -113,6 +126,7 @@
             .arg(
                 Arg::new(<span class="string">&quot;path&quot;</span>)
                     .value_name(<span class="string">&quot;PATH&quot;</span>)
+                    .num_args(<span class="number">1</span>..)
                     .required(<span class="bool-val">true</span>)
                     .help(<span class="string">&quot;File or Directory paths to scan. Directories are scanned recursively.&quot;</span>)
                     .value_parser(ValueParser::path_buf()),
@@ -144,6 +158,18 @@
         <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>);
         <span class="macro">assert!</span>(matches.is_some());
         <span class="macro">assert_eq!</span>(matches.unwrap().get_one::&lt;PathBuf&gt;(<span class="string">&quot;path&quot;</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PathBuf::from(<span class="string">&quot;.&quot;</span>)));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_lint_multiple_paths() {
+        <span class="kw">let </span>arg = <span class="string">&quot;oxc lint foo bar baz&quot;</span>;
+        <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
+        <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>);
+        <span class="macro">assert!</span>(matches.is_some());
+        <span class="macro">assert_eq!</span>(
+            matches.unwrap().get_many::&lt;PathBuf&gt;(<span class="string">&quot;path&quot;</span>).unwrap().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+            [<span class="kw-2">&amp;</span>PathBuf::from(<span class="string">&quot;foo&quot;</span>), <span class="kw-2">&amp;</span>PathBuf::from(<span class="string">&quot;bar&quot;</span>), <span class="kw-2">&amp;</span>PathBuf::from(<span class="string">&quot;baz&quot;</span>)]
+        );
     }
 
     <span class="attr">#[test]
