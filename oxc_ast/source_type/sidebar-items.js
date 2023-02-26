@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":[["VALID_EXTENSIONS",""]],"enum":[["Language",""],["LanguageVariant",""],["ModuleKind",""],["SourceTypeError",""]],"struct":[["SourceType",""],["SourceTypeBuilder",""]]};

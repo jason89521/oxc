@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":[["Allocator",""],["Box","Bumpalo Box"],["String","A UTF-8 encoded, growable string."],["Vec","Bumpalo Vec"]]};

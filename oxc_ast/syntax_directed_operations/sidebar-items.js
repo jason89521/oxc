@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"trait":[["BoundName","`BoundName`"],["BoundNames",""],["IsSimpleParameterList","`IsSimpleParameterList`"],["PrivateBoundIdentifiers","`PrivateBoundIdentifiers`"],["PropName","`PropName`"]]};

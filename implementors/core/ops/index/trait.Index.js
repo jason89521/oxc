@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"oxc_semantic":[["impl&lt;'a&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/index/trait.Index.html\" title=\"trait core::ops::index::Index\">Index</a>&lt;NodeId&gt; for <a class=\"struct\" href=\"oxc_semantic/struct.AstNodes.html\" title=\"struct oxc_semantic::AstNodes\">AstNodes</a>&lt;'a&gt;"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

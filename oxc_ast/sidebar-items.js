@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":[["ast",""],["ast_builder","AST builder for creating AST spans"],["ast_kind",""],["context","ECMAScript Grammar Contexts: [In] [Yield] [Await]"],["source_type",""],["span",""],["syntax_directed_operations","Syntax-Directed Operations"],["visit","AST Visitor Pattern. See:"]],"struct":[["BigUint","A big unsigned integer type."]],"type":[["Atom",""]]};

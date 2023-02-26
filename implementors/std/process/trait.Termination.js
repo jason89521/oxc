@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"oxc_cli":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/std/process/trait.Termination.html\" title=\"trait std::process::Termination\">Termination</a> for <a class=\"enum\" href=\"oxc_cli/enum.CliRunResult.html\" title=\"enum oxc_cli::CliRunResult\">CliRunResult</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
