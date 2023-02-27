@@ -32,13 +32,17 @@
 <a href="#32" id="32">32</a>
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
 </pre><pre class="rust"><code><span class="kw">use </span>oxc_ast::{AstKind, Span};
 <span class="kw">use </span>oxc_diagnostics::{
     miette::{<span class="self">self</span>, Diagnostic},
     thiserror::Error,
 };
 
-<span class="kw">use crate</span>::{context::LintContext, rule::Rule};
+<span class="kw">use crate</span>::{context::LintContext, rule::Rule, AstNode};
 
 <span class="attr">#[derive(Debug, Error, Diagnostic)]
 #[error(<span class="string">&quot;eslint(no-debugger): `debugger` statement is not allowed&quot;</span>)]
@@ -48,9 +52,13 @@
 <span class="attr">#[derive(Debug, Default, Clone)]
 </span><span class="kw">pub struct </span>NoDebugger;
 
+<span class="kw">const </span>RULE_NAME: <span class="kw-2">&amp;</span>str = <span class="string">&quot;no-debugger&quot;</span>;
+
 <span class="kw">impl </span>Rule <span class="kw">for </span>NoDebugger {
-    <span class="kw">fn </span>run&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, kind: AstKind&lt;<span class="lifetime">&#39;a</span>&gt;, ctx: <span class="kw-2">&amp;</span>LintContext&lt;<span class="lifetime">&#39;a</span>&gt;) {
-        <span class="kw">if let </span>AstKind::DebuggerStatement(stmt) = kind {
+    <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = RULE_NAME;
+
+    <span class="kw">fn </span>run&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, node: <span class="kw-2">&amp;</span>AstNode&lt;<span class="lifetime">&#39;a</span>&gt;, ctx: <span class="kw-2">&amp;</span>LintContext&lt;<span class="lifetime">&#39;a</span>&gt;) {
+        <span class="kw">if let </span>AstKind::DebuggerStatement(stmt) = node.get().kind() {
             ctx.diagnostic(NoDebuggerDiagnostic(stmt.span));
         }
     }
@@ -58,13 +66,13 @@
 
 <span class="attr">#[test]
 </span><span class="kw">fn </span>test() {
-    <span class="kw">use </span><span class="kw">crate</span>::rules::RuleEnum;
     <span class="kw">use </span><span class="kw">crate</span>::tester::Tester;
-    <span class="kw">let </span>pass = <span class="macro">vec!</span>[<span class="string">&quot;var test = { debugger: 1 }; test.debugger;&quot;</span>];
 
-    <span class="kw">let </span>fail = <span class="macro">vec!</span>[<span class="string">&quot;if (foo) debugger&quot;</span>];
+    <span class="kw">let </span>pass = <span class="macro">vec!</span>[(<span class="string">&quot;var test = { debugger: 1 }; test.debugger;&quot;</span>, <span class="prelude-val">None</span>)];
 
-    Tester::new(<span class="string">&quot;no-debugger&quot;</span>, RuleEnum::NoDebugger(NoDebugger), pass, fail).test_and_snapshot();
+    <span class="kw">let </span>fail = <span class="macro">vec!</span>[(<span class="string">&quot;if (foo) debugger&quot;</span>, <span class="prelude-val">None</span>)];
+
+    Tester::new(RULE_NAME, pass, fail).test_and_snapshot();
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="oxc_linter" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (c18a5e8a5 2023-01-25)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-a43118d2dfb2799d.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

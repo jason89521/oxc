@@ -415,6 +415,10 @@
 <a href="#415" id="415">415</a>
 <a href="#416" id="416">416</a>
 <a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
 </pre><pre class="rust"><code><span class="kw">use </span>oxc_allocator::{Box, Vec};
 <span class="kw">use </span>oxc_ast::{ast::<span class="kw-2">*</span>, context::Context, Span};
 <span class="kw">use </span>oxc_diagnostics::Result;
@@ -629,6 +633,9 @@
             Kind::Type <span class="kw">if </span><span class="self">self</span>.peek_at(Kind::LCurly) &amp;&amp; <span class="self">self</span>.ts_enabled() =&gt; <span class="self">self
                 </span>.parse_export_named_specifiers()
                 .map(ModuleDeclarationKind::ExportNamedDeclaration),
+            Kind::Type <span class="kw">if </span><span class="self">self</span>.peek_at(Kind::Star) =&gt; {
+                <span class="self">self</span>.parse_export_all_declaration().map(ModuleDeclarationKind::ExportAllDeclaration)
+            }
             <span class="kw">_ </span>=&gt; <span class="self">self
                 </span>.parse_export_named_declaration()
                 .map(ModuleDeclarationKind::ExportNamedDeclaration),
@@ -750,13 +757,14 @@
     //   * as ModuleExportName
     //   NamedExports
     </span><span class="kw">fn </span>parse_export_all_declaration(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="lifetime">&#39;a</span>, ExportAllDeclaration&lt;<span class="lifetime">&#39;a</span>&gt;&gt;&gt; {
+        <span class="kw">let </span>export_kind = <span class="self">self</span>.parse_import_or_export_kind();
         <span class="self">self</span>.bump_any(); <span class="comment">// bump `star`
         </span><span class="kw">let </span>exported = <span class="self">self</span>.eat(Kind::As).then(|| <span class="self">self</span>.parse_module_export_name()).transpose()<span class="question-mark">?</span>;
         <span class="self">self</span>.expect(Kind::From)<span class="question-mark">?</span>;
         <span class="kw">let </span>source = <span class="self">self</span>.parse_literal_string()<span class="question-mark">?</span>;
         <span class="kw">let </span>assertions = <span class="self">self</span>.parse_import_attributes()<span class="question-mark">?</span>;
         <span class="self">self</span>.asi()<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.ast.export_all_declaration(exported, source, assertions))
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.ast.export_all_declaration(exported, source, assertions, export_kind))
     }
 
     <span class="comment">// ImportSpecifier :

@@ -63,6 +63,8 @@
 <a href="#63" id="63">63</a>
 <a href="#64" id="64">64</a>
 <a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
 </pre><pre class="rust"><code><span class="doccomment">//! AST
 //! NOTE: This is not compatible with estree.
 
@@ -78,6 +80,7 @@
 <span class="kw">pub mod </span>source_type;
 <span class="kw">pub mod </span>span;
 <span class="kw">pub mod </span>syntax_directed_operations;
+<span class="kw">pub mod </span>trivia;
 <span class="kw">pub mod </span>visit;
 
 <span class="kw">pub use </span>ast_kind::AstKind;
@@ -86,6 +89,7 @@
 <span class="kw">pub use </span><span class="kw">crate</span>::ast_builder::<span class="kw-2">*</span>;
 <span class="kw">pub use </span><span class="kw">crate</span>::source_type::<span class="kw-2">*</span>;
 <span class="kw">pub use </span><span class="kw">crate</span>::span::<span class="kw-2">*</span>;
+<span class="kw">pub use </span><span class="kw">crate</span>::trivia::<span class="kw-2">*</span>;
 
 <span class="kw">pub type </span>Atom = compact_str::CompactString;
 

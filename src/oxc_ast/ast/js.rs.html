@@ -1737,6 +1737,7 @@
 <a href="#1737" id="1737">1737</a>
 <a href="#1738" id="1738">1738</a>
 <a href="#1739" id="1739">1739</a>
+<a href="#1740" id="1740">1740</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use </span>oxc_allocator::{Box, Vec};
@@ -3406,6 +3407,7 @@
     <span class="kw">pub </span>source: StringLiteral,
     <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>))]
     </span><span class="kw">pub </span>assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
+    </span><span class="kw">pub </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;, <span class="comment">// `export type *`
 </span>}
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Eq, Hash)]

@@ -312,6 +312,13 @@
 <a href="#312" id="312">312</a>
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Code related to navigating `Token`s from the lexer
 
 </span><span class="kw">use </span>oxc_ast::{context::Context, Atom, Span};
@@ -596,6 +603,13 @@
             <span class="self">self</span>.rewind(checkpoint);
         }
         result
+    }
+
+    <span class="kw">pub fn </span>lookahead&lt;U&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, predicate: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>Parser&lt;<span class="lifetime">&#39;a</span>&gt;) -&gt; U) -&gt; U {
+        <span class="kw">let </span>checkpoint = <span class="self">self</span>.checkpoint();
+        <span class="kw">let </span>answer = predicate(<span class="self">self</span>);
+        <span class="self">self</span>.rewind(checkpoint);
+        answer
     }
 
     <span class="kw">pub fn </span>without_context&lt;F, T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flags: Context, cb: F) -&gt; T

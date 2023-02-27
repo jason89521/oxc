@@ -1454,6 +1454,15 @@
 <a href="#1454" id="1454">1454</a>
 <a href="#1455" id="1455">1455</a>
 <a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
 </pre><pre class="rust"><code><span class="doccomment">//! An Ecma-262 Lexer / Tokenizer
 //! Prior Arts:
 //!     * [jsparagus](https://github.com/mozilla-spidermonkey/jsparagus/blob/master/crates/parser/src)
@@ -1467,22 +1476,26 @@
 <span class="kw">mod </span>simd;
 <span class="kw">mod </span>string_builder;
 <span class="kw">mod </span>token;
+<span class="kw">mod </span>trivia_builder;
 
 <span class="kw">use </span>std::{collections::VecDeque, str::Chars};
 
-<span class="kw">use </span>constants::{
-    is_identifier_part, is_identifier_start, is_irregular_line_terminator, is_irregular_whitespace,
-    is_line_terminator, EOF, SINGLE_CHAR_TOKENS,
-};
-<span class="kw">pub use </span>kind::Kind;
-<span class="kw">use </span>number::{parse_big_int, parse_float, parse_int};
 <span class="kw">use </span>oxc_allocator::{Allocator, String};
 <span class="kw">use </span>oxc_ast::{ast::RegExpFlags, Atom, SourceType, Span};
 <span class="kw">use </span>oxc_diagnostics::{Diagnostics, Error};
 <span class="kw">use </span>simd::{SkipMultilineComment, SkipWhitespace};
-<span class="kw">use </span>string_builder::AutoCow;
 <span class="kw">pub use </span>token::{RegExp, Token, TokenValue};
 
+<span class="kw">pub use </span><span class="self">self</span>::kind::Kind;
+<span class="kw">use </span><span class="self">self</span>::{
+    constants::{
+        is_identifier_part, is_identifier_start, is_irregular_line_terminator,
+        is_irregular_whitespace, is_line_terminator, EOF, SINGLE_CHAR_TOKENS,
+    },
+    number::{parse_big_int, parse_float, parse_int},
+    string_builder::AutoCow,
+    trivia_builder::TriviaBuilder,
+};
 <span class="kw">use </span><span class="kw">crate</span>::diagnostics;
 
 <span class="attr">#[derive(Debug, Clone)]
@@ -1518,6 +1531,8 @@
     lookahead: VecDeque&lt;LexerCheckpoint&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
 
     context: LexerContext,
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) trivia_builder: TriviaBuilder,
 }
 
 <span class="attr">#[allow(clippy::unused_self)]
@@ -1544,6 +1559,7 @@
             errors,
             lookahead: VecDeque::with_capacity(<span class="number">4</span>),
             context: LexerContext::Regular,
+            trivia_builder: TriviaBuilder::default(),
         }
     }
 
@@ -1952,6 +1968,7 @@
             }
         }
         <span class="self">self</span>.current.token.is_on_new_line = <span class="bool-val">true</span>;
+        <span class="self">self</span>.trivia_builder.add_single_line_comment(<span class="self">self</span>.current.token.start, <span class="self">self</span>.offset());
         Kind::Comment
     }
 
@@ -1975,6 +1992,7 @@
             <span class="kw">return </span>Kind::Eof;
         }
 
+        <span class="self">self</span>.trivia_builder.add_single_line_comment(<span class="self">self</span>.current.token.start, <span class="self">self</span>.offset());
         Kind::MultiLineComment
     }
 

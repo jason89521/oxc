@@ -106,7 +106,7 @@
         <span class="kw">let </span>ret = Parser::new(<span class="kw-2">&amp;</span>allocator, <span class="kw-2">&amp;</span>source_text, source_type).parse();
         <span class="kw">let </span>diagnostics = <span class="kw">if </span>ret.errors.is_empty() {
             <span class="kw">let </span>program = allocator.alloc(ret.program);
-            <span class="kw">let </span>semantic = SemanticBuilder::new().build(program);
+            <span class="kw">let </span>semantic = SemanticBuilder::new().build(program, ret.trivias);
             Linter::new().run(<span class="kw-2">&amp;</span>Rc::new(semantic))
         } <span class="kw">else </span>{
             ret.errors

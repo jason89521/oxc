@@ -510,6 +510,7 @@
 <a href="#510" id="510">510</a>
 <a href="#511" id="511">511</a>
 <a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
 </pre><pre class="rust"><code><span class="kw">use </span>oxc_allocator::Box;
 <span class="kw">use </span>oxc_ast::{
     ast::<span class="kw-2">*</span>,
@@ -827,9 +828,9 @@
         <span class="bool-val">false
     </span>}
 
-    <span class="doccomment">/** ----------------------- declaration --------------------- */
+    <span class="doccomment">/** ----------------------- declare --------------------- */
 
-    </span><span class="kw">pub fn </span>is_at_ts_declaration_clause(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+    </span><span class="kw">pub fn </span>is_at_ts_declare_clause(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
         <span class="kw">if </span>!<span class="self">self</span>.at(Kind::Declare) || <span class="self">self</span>.peek_token().is_on_new_line {
             <span class="kw">return </span><span class="bool-val">false</span>;
         }
@@ -868,13 +869,14 @@
         <span class="bool-val">false
     </span>}
 
-    <span class="kw">pub fn </span>parse_ts_declare_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Statement&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
+    <span class="kw">pub fn </span>parse_ts_declaration_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Statement&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="kw">let </span>declaration = <span class="self">self</span>.parse_declaration_clause()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(Statement::Declaration(declaration))
     }
 
     <span class="kw">pub fn </span>parse_declaration_clause(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Declaration&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
         <span class="kw">let </span>has_ambient = <span class="self">self</span>.ctx.has_ambient();
+
         <span class="kw">let </span>declare = <span class="self">self</span>.eat(Kind::Declare);
         <span class="kw">if </span>declare {
             <span class="self">self</span>.ctx = <span class="self">self</span>.ctx.and_ambient(<span class="bool-val">true</span>);

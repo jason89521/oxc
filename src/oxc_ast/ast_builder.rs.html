@@ -1743,6 +1743,7 @@
 <a href="#1743" id="1743">1743</a>
 <a href="#1744" id="1744">1744</a>
 <a href="#1745" id="1745">1745</a>
+<a href="#1746" id="1746">1746</a>
 </pre><pre class="rust"><code><span class="doccomment">//! AST builder for creating AST spans
 
 </span><span class="attr">#![allow(clippy::unused_self, clippy::missing_const_for_fn, clippy::too_many_arguments)]
@@ -2702,8 +2703,9 @@
         exported: <span class="prelude-ty">Option</span>&lt;ModuleExportName&gt;,
         source: StringLiteral,
         assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
-    </span>) -&gt; Box&lt;<span class="lifetime">&#39;a</span>, ExportAllDeclaration&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
-        <span class="self">self</span>.alloc(ExportAllDeclaration { exported, source, assertions })
+        </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;,
+    ) -&gt; Box&lt;<span class="lifetime">&#39;a</span>, ExportAllDeclaration&lt;<span class="lifetime">&#39;a</span>&gt;&gt; {
+        <span class="self">self</span>.alloc(ExportAllDeclaration { exported, source, assertions, export_kind })
     }
 
     <span class="attr">#[must_use]

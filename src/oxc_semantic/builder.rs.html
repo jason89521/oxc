@@ -54,11 +54,12 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Semantic Builder
 //! This builds:
 //!   * The untyped and flattened ast nodes into an indextree
 
-</span><span class="kw">use </span>oxc_ast::{ast::Program, visit::Visit, AstKind};
+</span><span class="kw">use </span>oxc_ast::{ast::Program, visit::Visit, AstKind, Trivias};
 
 <span class="kw">use crate</span>::{
     node::{AstNodeId, AstNodes, SemanticNode},
@@ -68,6 +69,7 @@
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>SemanticBuilder&lt;<span class="lifetime">&#39;a</span>&gt; {
     nodes: AstNodes&lt;<span class="lifetime">&#39;a</span>&gt;,
+
     current_node_id: AstNodeId,
 }
 
@@ -82,10 +84,10 @@
     }
 
     <span class="attr">#[must_use]
-    </span><span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Program&lt;<span class="lifetime">&#39;a</span>&gt;) -&gt; Semantic&lt;<span class="lifetime">&#39;a</span>&gt; {
+    </span><span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>, program: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Program&lt;<span class="lifetime">&#39;a</span>&gt;, trivias: Trivias) -&gt; Semantic&lt;<span class="lifetime">&#39;a</span>&gt; {
         <span class="comment">// AST pass
         </span><span class="self">self</span>.visit_program(program);
-        Semantic { nodes: <span class="self">self</span>.nodes }
+        Semantic { nodes: <span class="self">self</span>.nodes, trivias }
     }
 
     <span class="kw">fn </span>create_ast_node(<span class="kw-2">&amp;mut </span><span class="self">self</span>, kind: AstKind&lt;<span class="lifetime">&#39;a</span>&gt;) {
