@@ -1725,19 +1725,6 @@
 <a href="#1725" id="1725">1725</a>
 <a href="#1726" id="1726">1726</a>
 <a href="#1727" id="1727">1727</a>
-<a href="#1728" id="1728">1728</a>
-<a href="#1729" id="1729">1729</a>
-<a href="#1730" id="1730">1730</a>
-<a href="#1731" id="1731">1731</a>
-<a href="#1732" id="1732">1732</a>
-<a href="#1733" id="1733">1733</a>
-<a href="#1734" id="1734">1734</a>
-<a href="#1735" id="1735">1735</a>
-<a href="#1736" id="1736">1736</a>
-<a href="#1737" id="1737">1737</a>
-<a href="#1738" id="1738">1738</a>
-<a href="#1739" id="1739">1739</a>
-<a href="#1740" id="1740">1740</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Display;
 
 <span class="kw">use </span>oxc_allocator::{Box, Vec};
@@ -1908,7 +1895,6 @@
 <span class="doccomment">/// Section 12.6 `IdentifierName`
 </span><span class="attr">#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
-#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(rename = <span class="string">&quot;Identifier&quot;</span>))]
 </span><span class="kw">pub struct </span>IdentifierName {
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
@@ -1918,7 +1904,6 @@
 <span class="doccomment">/// Section 13.1 `IdentifierReference`
 </span><span class="attr">#[derive(Debug, Clone, Serialize, PartialEq, Hash, Eq)]
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
-#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(rename = <span class="string">&quot;Identifier&quot;</span>))]
 </span><span class="kw">pub struct </span>IdentifierReference {
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
@@ -1928,7 +1913,6 @@
 <span class="doccomment">/// Section 13.1 `BindingIdentifier`
 </span><span class="attr">#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
-#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(rename = <span class="string">&quot;Identifier&quot;</span>))]
 </span><span class="kw">pub struct </span>BindingIdentifier {
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
@@ -1938,7 +1922,6 @@
 <span class="doccomment">/// Section 13.1 `LabelIdentifier`
 </span><span class="attr">#[derive(Debug, Clone, Serialize, PartialEq, Eq, Hash)]
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
-#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(rename = <span class="string">&quot;Identifier&quot;</span>))]
 </span><span class="kw">pub struct </span>LabelIdentifier {
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
@@ -1960,8 +1943,7 @@
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
     <span class="kw">pub </span>elements: Vec&lt;<span class="lifetime">&#39;a</span>, <span class="prelude-ty">Option</span>&lt;Argument&lt;<span class="lifetime">&#39;a</span>&gt;&gt;&gt;,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip))]
-    </span><span class="kw">pub </span>trailing_comma: <span class="prelude-ty">Option</span>&lt;Span&gt;,
+    <span class="kw">pub </span>trailing_comma: <span class="prelude-ty">Option</span>&lt;Span&gt;,
 }
 
 <span class="doccomment">/// Section 13.2.6 Object Expression
@@ -1971,8 +1953,7 @@
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
     <span class="kw">pub </span>properties: Vec&lt;<span class="lifetime">&#39;a</span>, ObjectProperty&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip))]
-    </span><span class="kw">pub </span>trailing_comma: <span class="prelude-ty">Option</span>&lt;Span&gt;,
+    <span class="kw">pub </span>trailing_comma: <span class="prelude-ty">Option</span>&lt;Span&gt;,
 }
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Hash)]
@@ -2300,7 +2281,6 @@
 ///     [+In] `PrivateIdentifier` in `ShiftExpression`[?Yield, ?Await]
 </span><span class="attr">#[derive(Debug, Serialize, PartialEq, Hash)]
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
-#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(rename = <span class="string">&quot;BinaryExpression&quot;</span>))]
 </span><span class="kw">pub struct </span>PrivateInExpression&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
@@ -3294,8 +3274,7 @@
     <span class="attr">#[serde(flatten)]
     </span><span class="kw">pub </span>span: Span,
     <span class="kw">pub </span>source: Expression&lt;<span class="lifetime">&#39;a</span>&gt;,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Vec::is_empty&quot;</span>))]
-    </span><span class="kw">pub </span>arguments: Vec&lt;<span class="lifetime">&#39;a</span>, Expression&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
+    <span class="kw">pub </span>arguments: Vec&lt;<span class="lifetime">&#39;a</span>, Expression&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
 }
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Eq, Hash)]
@@ -3303,10 +3282,8 @@
 </span><span class="kw">pub struct </span>ImportDeclaration&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub </span>specifiers: Vec&lt;<span class="lifetime">&#39;a</span>, ImportDeclarationSpecifier&gt;,
     <span class="kw">pub </span>source: StringLiteral,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>))]
-    </span><span class="kw">pub </span>assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
-    </span><span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>))]
-    </span><span class="kw">pub </span>import_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;, <span class="comment">// `import type { foo } from &#39;bar&#39;`
+    <span class="kw">pub </span>assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
+    </span><span class="kw">pub </span>import_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;,      <span class="comment">// `import type { foo } from &#39;bar&#39;`
 </span>}
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Eq, Hash)]
@@ -3380,8 +3357,7 @@
     <span class="kw">pub </span>declaration: <span class="prelude-ty">Option</span>&lt;Declaration&lt;<span class="lifetime">&#39;a</span>&gt;&gt;,
     <span class="kw">pub </span>specifiers: Vec&lt;<span class="lifetime">&#39;a</span>, ExportSpecifier&gt;,
     <span class="kw">pub </span>source: <span class="prelude-ty">Option</span>&lt;StringLiteral&gt;,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>))]
-    </span><span class="kw">pub </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;, <span class="comment">// `export type { foo }`
+    <span class="kw">pub </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;, <span class="comment">// `export type { foo }`
 </span>}
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>&gt; ExportNamedDeclaration&lt;<span class="lifetime">&#39;a</span>&gt; {
@@ -3396,8 +3372,7 @@
 #[serde(tag = <span class="string">&quot;type&quot;</span>)]
 </span><span class="kw">pub struct </span>ExportDefaultDeclaration&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub </span>declaration: ExportDefaultDeclarationKind&lt;<span class="lifetime">&#39;a</span>&gt;,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip))]
-    </span><span class="kw">pub </span>exported: ModuleExportName, <span class="comment">// `default`
+    <span class="kw">pub </span>exported: ModuleExportName, <span class="comment">// `default`
 </span>}
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Eq, Hash)]
@@ -3405,9 +3380,8 @@
 </span><span class="kw">pub struct </span>ExportAllDeclaration&lt;<span class="lifetime">&#39;a</span>&gt; {
     <span class="kw">pub </span>exported: <span class="prelude-ty">Option</span>&lt;ModuleExportName&gt;,
     <span class="kw">pub </span>source: StringLiteral,
-    <span class="attr">#[cfg_attr(feature = <span class="string">&quot;acorn&quot;</span>, serde(skip_serializing_if = <span class="string">&quot;Option::is_none&quot;</span>))]
-    </span><span class="kw">pub </span>assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
-    </span><span class="kw">pub </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;, <span class="comment">// `export type *`
+    <span class="kw">pub </span>assertions: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="lifetime">&#39;a</span>, ImportAttribute&gt;&gt;, <span class="comment">// Some(vec![]) for empty assertion
+    </span><span class="kw">pub </span>export_kind: <span class="prelude-ty">Option</span>&lt;ImportOrExportKind&gt;,      <span class="comment">// `export type *`
 </span>}
 
 <span class="attr">#[derive(Debug, Serialize, PartialEq, Eq, Hash)]

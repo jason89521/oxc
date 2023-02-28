@@ -91,6 +91,29 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
 </pre><pre class="rust"><code><span class="kw">use </span>clap::{builder::ValueParser, Arg, Command <span class="kw">as </span>ClapCommand};
 
 <span class="attr">#[derive(Debug)]
@@ -123,6 +146,13 @@
             .alias(<span class="string">&quot;check&quot;</span>)
             .about(<span class="string">&quot;Lint this repository.&quot;</span>)
             .arg_required_else_help(<span class="bool-val">true</span>)
+            .arg(
+              Arg::new(<span class="string">&quot;quiet&quot;</span>)
+                .long(<span class="string">&quot;quiet&quot;</span>)
+                .required(<span class="bool-val">false</span>)
+                .action(clap::ArgAction::SetTrue)
+                .help(<span class="string">&quot;This option allows you to disable reporting on warnings. If you enable this option, only errors are reported by oxc_lint.&quot;</span>)
+            )
             .arg(
                 Arg::new(<span class="string">&quot;path&quot;</span>)
                     .value_name(<span class="string">&quot;PATH&quot;</span>)
@@ -182,6 +212,22 @@
             matches.unwrap().get_one::&lt;PathBuf&gt;(<span class="string">&quot;path&quot;</span>),
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>PathBuf::from(<span class="string">&quot;/path/to/dir&quot;</span>))
         );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_quiet_true() {
+        <span class="kw">let </span>arg = <span class="string">&quot;oxc lint foo.js --quiet&quot;</span>;
+        <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
+        <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>);
+        <span class="macro">assert!</span>(matches.unwrap().get_flag(<span class="string">&quot;quiet&quot;</span>));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_quiet_false() {
+        <span class="kw">let </span>arg = <span class="string">&quot;oxc lint foo.js&quot;</span>;
+        <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
+        <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>);
+        <span class="macro">assert!</span>(!matches.unwrap().get_flag(<span class="string">&quot;quiet&quot;</span>));
     }
 }
 </code></pre></div>

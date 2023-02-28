@@ -39,7 +39,7 @@
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>CliRunResult {
     <span class="prelude-val">None</span>,
-    PathNotFound { path: PathBuf },
+    PathNotFound { paths: Vec&lt;PathBuf&gt; },
     LintResult { number_of_files: usize, number_of_diagnostics: usize },
 }
 
@@ -47,8 +47,8 @@
     <span class="kw">fn </span>report(<span class="self">self</span>) -&gt; ExitCode {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::None =&gt; ExitCode::from(<span class="number">0</span>),
-            <span class="self">Self</span>::PathNotFound { path } =&gt; {
-                <span class="macro">println!</span>(<span class="string">&quot;Path {} does not exist.&quot;</span>, path.to_string_lossy());
+            <span class="self">Self</span>::PathNotFound { paths } =&gt; {
+                <span class="macro">println!</span>(<span class="string">&quot;Path {paths:?} does not exist.&quot;</span>);
                 ExitCode::from(<span class="number">1</span>)
             }
             <span class="self">Self</span>::LintResult { number_of_files, number_of_diagnostics } =&gt; {

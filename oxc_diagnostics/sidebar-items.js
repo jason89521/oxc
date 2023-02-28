@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Diagnostics",""]],"type":[["Error",""],["Result",""]]};
+window.SIDEBAR_ITEMS = {"struct":[["Diagnostics",""]],"type":[["Error",""],["Result",""],["Severity",""]]};

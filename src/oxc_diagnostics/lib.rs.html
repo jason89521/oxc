@@ -28,6 +28,7 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Diagnostics Wrapper
 //! Exports `thiserror` and `miette`
 
@@ -37,6 +38,7 @@
 <span class="kw">pub use </span>thiserror;
 
 <span class="kw">pub type </span>Error = miette::Error;
+<span class="kw">pub type </span>Severity = miette::Severity;
 
 <span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, Error&gt;;
 
