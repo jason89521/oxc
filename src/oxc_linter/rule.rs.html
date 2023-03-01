@@ -12,6 +12,14 @@
 <a href="#12" id="12">12</a>
 <a href="#13" id="13">13</a>
 <a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
 </pre><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use crate</span>::{context::LintContext, AstNode};
@@ -20,11 +28,19 @@
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
     <span class="doccomment">/// Initialize from eslint json configuration
+    </span><span class="attr">#[must_use]
     </span><span class="kw">fn </span>from_configuration(_value: serde_json::Value) -&gt; <span class="self">Self </span>{
         <span class="self">Self</span>::default()
     }
 
     <span class="kw">fn </span>run&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, node: <span class="kw-2">&amp;</span>AstNode&lt;<span class="lifetime">&#39;a</span>&gt;, _ctx: <span class="kw-2">&amp;</span>LintContext&lt;<span class="lifetime">&#39;a</span>&gt;);
+}
+
+<span class="kw">pub trait </span>RuleMeta {
+    <span class="attr">#[must_use]
+    </span><span class="kw">fn </span>documentation() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str&gt; {
+        <span class="prelude-val">None
+    </span>}
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="oxc_linter" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (c18a5e8a5 2023-01-25)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-a43118d2dfb2799d.js" data-settings-css="settings-7c23ac01f615ce90.css" ></div></body></html>

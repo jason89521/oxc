@@ -83,6 +83,20 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
 </pre><pre class="rust"><code><span class="kw">mod </span>command;
 <span class="kw">mod </span>options;
 <span class="kw">mod </span>result;
@@ -123,7 +137,21 @@
             </span>.cli_options
             .paths
             .iter()
-            .flat_map(|path| Walk::new(path).iter().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;())
+            .flat_map(|path| {
+                Walk::new(path)
+                    .iter()
+                    .filter(|path| {
+                        <span class="kw">let </span>ignore_pattern = <span class="kw-2">&amp;</span><span class="self">self</span>.cli_options.ignore_pattern;
+                        <span class="kw">for </span>pattern <span class="kw">in </span>ignore_pattern {
+                            <span class="kw">if </span>pattern.matches_path(path) {
+                                <span class="kw">return </span><span class="bool-val">false</span>;
+                            }
+                        }
+
+                        <span class="bool-val">true
+                    </span>})
+                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span>number_of_diagnostics = paths

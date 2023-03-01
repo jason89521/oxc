@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":[["declare_oxc_lint","Macro used to declare an oxc lint rule"],["declare_oxc_lint_test","Same as `declare_oxc_lint`, but doesn’t do imports. Enables multiple usages in a single file."]]};

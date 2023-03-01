@@ -114,7 +114,36 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
-</pre><pre class="rust"><code><span class="kw">use </span>clap::{builder::ValueParser, Arg, Command <span class="kw">as </span>ClapCommand};
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+</pre><pre class="rust"><code><span class="kw">use </span>clap::{builder::ValueParser, Arg, ArgAction, Command <span class="kw">as </span>ClapCommand};
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>Command {
@@ -152,6 +181,13 @@
                 .required(<span class="bool-val">false</span>)
                 .action(clap::ArgAction::SetTrue)
                 .help(<span class="string">&quot;This option allows you to disable reporting on warnings. If you enable this option, only errors are reported by oxc_lint.&quot;</span>)
+            )
+            .arg(
+                Arg::new(<span class="string">&quot;ignore-pattern&quot;</span>)
+                .long(<span class="string">&quot;ignore-pattern&quot;</span>)
+                .required(<span class="bool-val">false</span>)
+                .action(ArgAction::Append)
+                .help(<span class="string">&quot;This option allows you to specify patterns of files to ignore (in addition to those in .eslintignore).&quot;</span>)
             )
             .arg(
                 Arg::new(<span class="string">&quot;path&quot;</span>)
@@ -228,6 +264,28 @@
         <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
         <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>);
         <span class="macro">assert!</span>(!matches.unwrap().get_flag(<span class="string">&quot;quiet&quot;</span>));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_single_ignore_pattern() {
+        <span class="kw">let </span>arg = <span class="string">&quot;oxc lint --ignore-pattern \&quot;./test\&quot; foo.js&quot;</span>;
+        <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
+        <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>).unwrap();
+        <span class="macro">assert_eq!</span>(matches.get_one::&lt;String&gt;(<span class="string">&quot;ignore-pattern&quot;</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="string">&quot;\&quot;./test\&quot;&quot;</span>.to_string()));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_multiple_ignore_pattern() {
+        <span class="kw">let </span>arg = <span class="string">&quot;oxc lint --ignore-pattern \&quot;./test\&quot; --ignore-pattern \&quot;bar.js\&quot; foo.js&quot;</span>;
+        <span class="kw">let </span>matches = Command::new().build().try_get_matches_from(arg.split(<span class="string">&#39; &#39;</span>)).unwrap();
+        <span class="kw">let </span>matches = matches.subcommand_matches(<span class="string">&quot;lint&quot;</span>).unwrap();
+        <span class="kw">let </span>ignore_pattern = matches.get_many::&lt;String&gt;(<span class="string">&quot;ignore-pattern&quot;</span>).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>compare = <span class="macro">vec!</span>[];
+        <span class="kw">for </span>pattern <span class="kw">in </span>ignore_pattern {
+            compare.push(pattern);
+        }
+
+        <span class="macro">assert_eq!</span>(compare, <span class="macro">vec!</span>[<span class="string">&quot;\&quot;./test\&quot;&quot;</span>, <span class="string">&quot;\&quot;bar.js\&quot;&quot;</span>]);
     }
 }
 </code></pre></div>
