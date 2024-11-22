@@ -245,6 +245,8 @@ impl<'a> Parser<'a> {
 }
 
 mod parser_parse {
+    use oxc_ast::ast::BindingPattern;
+
     use super::*;
 
     /// `UniquePromise` is a way to use the type system to enforce the invariant that only
@@ -326,6 +328,22 @@ mod parser_parse {
                 unique,
             );
             parser.parse_expression()
+        }
+
+        /// Parse a single [`BindingPattern`].
+        pub fn parse_binding_pattern(
+            self,
+        ) -> std::result::Result<BindingPattern<'a>, OxcDiagnostic> {
+            let unique = UniquePromise::new();
+            let mut parser = ParserImpl::new(
+                self.allocator,
+                self.source_text,
+                self.source_type,
+                self.options,
+                unique,
+            );
+
+            parser.parse_binding_pattern(false)
         }
     }
 }
