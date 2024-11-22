@@ -343,6 +343,8 @@ mod parser_parse {
                 unique,
             );
 
+            parser.bump_any();
+
             parser.parse_binding_pattern(false)
         }
     }
