@@ -245,7 +245,9 @@ impl<'a> Parser<'a> {
 }
 
 mod parser_parse {
-    use oxc_ast::ast::BindingPattern;
+    use js::{VariableDeclarationContext, VariableDeclarationParent};
+    use modifiers::Modifiers;
+    use oxc_ast::ast::{BindingPattern, VariableDeclaration};
 
     use super::*;
 
@@ -346,6 +348,30 @@ mod parser_parse {
             parser.bump_any();
 
             parser.parse_binding_pattern(false)
+        }
+
+        /// Parse a single [`VariableDeclaration`].
+        pub fn parse_variable_declaration(
+            self,
+        ) -> std::result::Result<VariableDeclaration<'a>, OxcDiagnostic> {
+            let unique = UniquePromise::new();
+            let mut parser = ParserImpl::new(
+                self.allocator,
+                self.source_text,
+                self.source_type,
+                self.options,
+                unique,
+            );
+
+            parser.bump_any();
+
+            parser
+                .parse_variable_declaration(
+                    parser.start_span(),
+                    VariableDeclarationContext::new(VariableDeclarationParent::Statement),
+                    &Modifiers::empty(),
+                )
+                .map(|d| d.unbox())
         }
     }
 }
