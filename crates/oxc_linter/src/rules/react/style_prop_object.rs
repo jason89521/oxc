@@ -110,7 +110,7 @@ fn is_invalid_expression<'a>(expression: Option<&Expression<'a>>, ctx: &LintCont
                 return is_invalid_type(&asd.type_annotation);
             };
 
-            return is_invalid_expression(var_decl.init.as_ref(), ctx);
+            is_invalid_expression(var_decl.init.as_ref(), ctx)
         }
         _ => false,
     }
@@ -493,5 +493,5 @@ fn test() {
         ),
     ];
 
-    Tester::new(StylePropObject::NAME, pass, fail).test_and_snapshot();
+    Tester::new(StylePropObject::NAME, StylePropObject::CATEGORY, pass, fail).test_and_snapshot();
 }

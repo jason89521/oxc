@@ -2,13 +2,13 @@
 #![warn(missing_docs)]
 use std::{borrow::Cow, fmt};
 
-use oxc_allocator::{Address, Box, FromIn, GetAddress, Vec};
+use oxc_allocator::{Box, FromIn, Vec};
 use oxc_span::{Atom, GetSpan, Span};
 use oxc_syntax::{operator::UnaryOperator, scope::ScopeFlags, symbol::SymbolId};
 
 use crate::ast::*;
 
-impl<'a> Program<'a> {
+impl Program<'_> {
     /// Returns `true` if this program has no statements or directives.
     pub fn is_empty(&self) -> bool {
         self.body.is_empty() && self.directives.is_empty()
@@ -284,34 +284,34 @@ impl<'a> Expression<'a> {
     }
 }
 
-impl<'a> fmt::Display for IdentifierName<'a> {
+impl fmt::Display for IdentifierName<'_> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.name.fmt(f)
     }
 }
 
-impl<'a> fmt::Display for IdentifierReference<'a> {
+impl fmt::Display for IdentifierReference<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.name.fmt(f)
     }
 }
 
-impl<'a> fmt::Display for BindingIdentifier<'a> {
+impl fmt::Display for BindingIdentifier<'_> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.name.fmt(f)
     }
 }
 
-impl<'a> ArrayExpressionElement<'a> {
+impl ArrayExpressionElement<'_> {
     #[allow(missing_docs)]
     pub fn is_elision(&self) -> bool {
         matches!(self, Self::Elision(_))
     }
 }
 
-impl<'a> ObjectPropertyKind<'a> {
+impl ObjectPropertyKind<'_> {
     /// Returns `true` if this object property is a [spread](SpreadElement).
     #[inline]
     pub fn is_spread(&self) -> bool {
@@ -544,7 +544,7 @@ impl<'a> ChainElement<'a> {
     }
 }
 
-impl<'a> CallExpression<'a> {
+impl CallExpression<'_> {
     #[allow(missing_docs)]
     pub fn callee_name(&self) -> Option<&str> {
         match &self.callee {
@@ -684,7 +684,7 @@ impl<'a> ObjectAssignmentTarget<'a> {
     }
 }
 
-impl<'a> AssignmentTargetMaybeDefault<'a> {
+impl AssignmentTargetMaybeDefault<'_> {
     #[allow(missing_docs)]
     pub fn name(&self) -> Option<Atom> {
         match self {
@@ -701,7 +701,7 @@ impl<'a> AssignmentTargetMaybeDefault<'a> {
     }
 }
 
-impl<'a> Statement<'a> {
+impl Statement<'_> {
     #[allow(missing_docs)]
     pub fn is_typescript_syntax(&self) -> bool {
         match self {
@@ -737,48 +737,7 @@ impl<'a> FromIn<'a, Expression<'a>> for Statement<'a> {
     }
 }
 
-impl<'a> GetAddress for Statement<'a> {
-    // `#[inline]` because compiler should boil this down to a single assembly instruction
-    #[inline]
-    fn address(&self) -> Address {
-        match self {
-            Statement::BlockStatement(s) => s.address(),
-            Statement::BreakStatement(s) => s.address(),
-            Statement::ContinueStatement(s) => s.address(),
-            Statement::DebuggerStatement(s) => s.address(),
-            Statement::DoWhileStatement(s) => s.address(),
-            Statement::EmptyStatement(s) => s.address(),
-            Statement::ExpressionStatement(s) => s.address(),
-            Statement::ForInStatement(s) => s.address(),
-            Statement::ForOfStatement(s) => s.address(),
-            Statement::ForStatement(s) => s.address(),
-            Statement::IfStatement(s) => s.address(),
-            Statement::LabeledStatement(s) => s.address(),
-            Statement::ReturnStatement(s) => s.address(),
-            Statement::SwitchStatement(s) => s.address(),
-            Statement::ThrowStatement(s) => s.address(),
-            Statement::TryStatement(s) => s.address(),
-            Statement::WhileStatement(s) => s.address(),
-            Statement::WithStatement(s) => s.address(),
-            Statement::VariableDeclaration(s) => s.address(),
-            Statement::FunctionDeclaration(s) => s.address(),
-            Statement::ClassDeclaration(s) => s.address(),
-            Statement::TSTypeAliasDeclaration(s) => s.address(),
-            Statement::TSInterfaceDeclaration(s) => s.address(),
-            Statement::TSEnumDeclaration(s) => s.address(),
-            Statement::TSModuleDeclaration(s) => s.address(),
-            Statement::TSImportEqualsDeclaration(s) => s.address(),
-            Statement::ImportDeclaration(s) => s.address(),
-            Statement::ExportAllDeclaration(s) => s.address(),
-            Statement::ExportDefaultDeclaration(s) => s.address(),
-            Statement::ExportNamedDeclaration(s) => s.address(),
-            Statement::TSExportAssignment(s) => s.address(),
-            Statement::TSNamespaceExportDeclaration(s) => s.address(),
-        }
-    }
-}
-
-impl<'a> Directive<'a> {
+impl Directive<'_> {
     /// A Use Strict Directive is an ExpressionStatement in a Directive Prologue whose StringLiteral is either of the exact code point sequences "use strict" or 'use strict'.
     /// A Use Strict Directive may not contain an EscapeSequence or LineContinuation.
     /// <https://tc39.es/ecma262/#sec-directive-prologues-and-the-use-strict-directive>
@@ -832,7 +791,7 @@ impl<'a> Declaration<'a> {
     }
 }
 
-impl<'a> VariableDeclaration<'a> {
+impl VariableDeclaration<'_> {
     #[allow(missing_docs)]
     pub fn is_typescript_syntax(&self) -> bool {
         self.declare
@@ -884,7 +843,7 @@ impl fmt::Display for VariableDeclarationKind {
     }
 }
 
-impl<'a> ForStatementInit<'a> {
+impl ForStatementInit<'_> {
     /// LexicalDeclaration[In, Yield, Await] :
     ///   LetOrConst BindingList[?In, ?Yield, ?Await] ;
     pub fn is_lexical_declaration(&self) -> bool {
@@ -892,7 +851,7 @@ impl<'a> ForStatementInit<'a> {
     }
 }
 
-impl<'a> ForStatementLeft<'a> {
+impl ForStatementLeft<'_> {
     /// LexicalDeclaration[In, Yield, Await] :
     ///   LetOrConst BindingList[?In, ?Yield, ?Await] ;
     pub fn is_lexical_declaration(&self) -> bool {
@@ -900,7 +859,7 @@ impl<'a> ForStatementLeft<'a> {
     }
 }
 
-impl<'a> SwitchCase<'a> {
+impl SwitchCase<'_> {
     /// `true` for `default:` cases.
     pub fn is_default_case(&self) -> bool {
         self.test.is_none()
@@ -968,7 +927,7 @@ impl<'a> BindingPatternKind<'a> {
     }
 }
 
-impl<'a> ObjectPattern<'a> {
+impl ObjectPattern<'_> {
     /// `true` for empty object patterns (`{}`).
     pub fn is_empty(&self) -> bool {
         self.properties.is_empty() && self.rest.is_none()
@@ -980,7 +939,7 @@ impl<'a> ObjectPattern<'a> {
     }
 }
 
-impl<'a> ArrayPattern<'a> {
+impl ArrayPattern<'_> {
     /// `true` for empty array patterns (`[]`).
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty() && self.rest.is_none()
@@ -1057,7 +1016,7 @@ impl<'a> FormalParameters<'a> {
     }
 }
 
-impl<'a> FormalParameter<'a> {
+impl FormalParameter<'_> {
     /// `true` if a `public` accessibility modifier is present. Use
     /// [`has_modifier`](FormalParameter::has_modifier) if you want to check for
     /// _any_ modifier, including `readonly` and `override`.
@@ -1101,7 +1060,7 @@ impl FormalParameterKind {
     }
 }
 
-impl<'a> FormalParameters<'a> {
+impl FormalParameters<'_> {
     /// `true` if no parameters are bound.
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
@@ -1113,7 +1072,7 @@ impl<'a> FormalParameters<'a> {
     }
 }
 
-impl<'a> FunctionBody<'a> {
+impl FunctionBody<'_> {
     /// `true` if this function body contains no statements or directives.
     pub fn is_empty(&self) -> bool {
         self.directives.is_empty() && self.statements.is_empty()
@@ -1138,7 +1097,7 @@ impl<'a> ArrowFunctionExpression<'a> {
     }
 }
 
-impl<'a> Class<'a> {
+impl Class<'_> {
     /// `true` if this [`Class`] is an expression.
     ///
     /// For example,
@@ -1453,7 +1412,7 @@ impl<'a> ImportAttributeKey<'a> {
     }
 }
 
-impl<'a> ExportNamedDeclaration<'a> {
+impl ExportNamedDeclaration<'_> {
     #[allow(missing_docs)]
     pub fn is_typescript_syntax(&self) -> bool {
         self.export_kind == ImportOrExportKind::Type
@@ -1461,21 +1420,21 @@ impl<'a> ExportNamedDeclaration<'a> {
     }
 }
 
-impl<'a> ExportDefaultDeclaration<'a> {
+impl ExportDefaultDeclaration<'_> {
     #[allow(missing_docs)]
     pub fn is_typescript_syntax(&self) -> bool {
         self.declaration.is_typescript_syntax()
     }
 }
 
-impl<'a> ExportAllDeclaration<'a> {
+impl ExportAllDeclaration<'_> {
     #[allow(missing_docs)]
     pub fn is_typescript_syntax(&self) -> bool {
         self.export_kind.is_type()
     }
 }
 
-impl<'a> ExportDefaultDeclarationKind<'a> {
+impl ExportDefaultDeclarationKind<'_> {
     #[allow(missing_docs)]
     #[inline]
     pub fn is_typescript_syntax(&self) -> bool {
@@ -1488,7 +1447,7 @@ impl<'a> ExportDefaultDeclarationKind<'a> {
     }
 }
 
-impl<'a> fmt::Display for ModuleExportName<'a> {
+impl fmt::Display for ModuleExportName<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
             Self::IdentifierName(identifier) => identifier.name.to_string(),

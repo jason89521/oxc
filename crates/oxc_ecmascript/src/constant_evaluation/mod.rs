@@ -1,4 +1,4 @@
-mod is_litral_value;
+mod is_literal_value;
 mod value;
 mod value_type;
 
@@ -11,7 +11,7 @@ use oxc_ast::ast::*;
 
 use crate::{side_effects::MayHaveSideEffects, ToBigInt, ToBoolean, ToInt32, ToJsString, ToNumber};
 
-pub use self::{is_litral_value::IsLiteralValue, value::ConstantValue, value_type::ValueType};
+pub use self::{is_literal_value::IsLiteralValue, value::ConstantValue, value_type::ValueType};
 
 pub trait ConstantEvaluation<'a> {
     fn is_global_reference(&self, ident: &IdentifierReference<'a>) -> bool {
@@ -280,19 +280,19 @@ pub trait ConstantEvaluation<'a> {
                 None
             }
             BinaryOperator::LessThan => {
-                return self.is_less_than(left, right, true).map(|value| match value {
+                self.is_less_than(left, right, true).map(|value| match value {
                     ConstantValue::Undefined => ConstantValue::Boolean(false),
                     _ => value,
                 })
             }
             BinaryOperator::GreaterThan => {
-                return self.is_less_than(right, left, false).map(|value| match value {
+                self.is_less_than(right, left, false).map(|value| match value {
                     ConstantValue::Undefined => ConstantValue::Boolean(false),
                     _ => value,
                 })
             }
             BinaryOperator::LessEqualThan => {
-                return self.is_less_than(right, left, false).map(|value| match value {
+                self.is_less_than(right, left, false).map(|value| match value {
                     ConstantValue::Boolean(true) | ConstantValue::Undefined => {
                         ConstantValue::Boolean(false)
                     }
@@ -301,7 +301,7 @@ pub trait ConstantEvaluation<'a> {
                 })
             }
             BinaryOperator::GreaterEqualThan => {
-                return self.is_less_than(left, right, true).map(|value| match value {
+                self.is_less_than(left, right, true).map(|value| match value {
                     ConstantValue::Boolean(true) | ConstantValue::Undefined => {
                         ConstantValue::Boolean(false)
                     }
@@ -436,6 +436,6 @@ pub trait ConstantEvaluation<'a> {
             return Some(ConstantValue::Undefined);
         }
 
-        return Some(ConstantValue::Boolean(left_num < right_num));
+        Some(ConstantValue::Boolean(left_num < right_num))
     }
 }

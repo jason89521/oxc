@@ -15,6 +15,7 @@ use dashmap::DashMap;
 use rustc_hash::FxBuildHasher;
 
 type AppliedOverrideHash = u64;
+type FxDashMap<K, V> = DashMap<K, V, FxBuildHasher>;
 
 // TODO: support `categories` et. al. in overrides.
 #[derive(Debug)]
@@ -41,7 +42,7 @@ pub struct ConfigStore {
     // with nested configs.
     /// Resolved override cache. The key is a hash of each override's ID that matched the list of
     /// file globs in order to avoid re-allocating the same set of rules multiple times.
-    cache: DashMap<AppliedOverrideHash, ResolvedLinterState, FxBuildHasher>,
+    cache: FxDashMap<AppliedOverrideHash, ResolvedLinterState>,
     /// "root" level configuration. In the future this may just be the first entry in `overrides`.
     base: ResolvedLinterState,
     /// Config deltas applied to `base`.
@@ -64,7 +65,7 @@ impl ConfigStore {
         // could end up needing (overrides.len() ** 2) capacity. I don't really want to
         // pre-allocate that much space unconditionally. Better to re-alloc if we end up needing
         // it.
-        let cache = DashMap::with_capacity_and_hasher(overrides.len(), FxBuildHasher);
+        let cache = FxDashMap::with_capacity_and_hasher(overrides.len(), FxBuildHasher);
 
         Self { cache, base, overrides }
     }
@@ -92,8 +93,24 @@ impl ConfigStore {
         let mut overrides_to_apply: Vec<OverrideId> = Vec::new();
         let mut hasher = FxBuildHasher.build_hasher();
 
+        // Compute the path of the file relative to the configuration file for glob matching. Globs should match
+        // relative to the location of the configuration file.
+        // - path: /some/path/like/this/to/file.js
+        // - config_path: /some/path/like/.oxlintrc.json
+        // => relative_path: this/to/file.js
+        // TODO: Handle nested configuration file paths.
+        let relative_path = if let Some(config_path) = &self.base.config.path {
+            if let Some(parent) = config_path.parent() {
+                path.strip_prefix(parent).unwrap_or(path)
+            } else {
+                path
+            }
+        } else {
+            path
+        };
+
         for (id, override_config) in self.overrides.iter_enumerated() {
-            if override_config.files.is_match(path) {
+            if override_config.files.is_match(relative_path) {
                 overrides_to_apply.push(id);
                 id.hash(&mut hasher);
             }
@@ -170,7 +187,10 @@ mod test {
 
     #[allow(clippy::default_trait_access)]
     fn no_explicit_any() -> RuleWithSeverity {
-        RuleWithSeverity::new(RuleEnum::NoExplicitAny(Default::default()), AllowWarnDeny::Warn)
+        RuleWithSeverity::new(
+            RuleEnum::TypescriptNoExplicitAny(Default::default()),
+            AllowWarnDeny::Warn,
+        )
     }
 
     /// an empty ruleset is a no-op
@@ -285,6 +305,7 @@ mod test {
             env: OxlintEnv::default(),
             settings: OxlintSettings::default(),
             globals: OxlintGlobals::default(),
+            path: None,
         };
         let overrides = from_json!([{
             "files": ["*.jsx", "*.tsx"],

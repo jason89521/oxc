@@ -45,7 +45,7 @@ impl<'s, 'a> Symbol<'s, 'a> {
     }
 
     #[inline]
-    pub const fn flags(&self) -> SymbolFlags {
+    pub fn flags(&self) -> SymbolFlags {
         self.flags
     }
 
@@ -165,7 +165,7 @@ impl<'s, 'a> Symbol<'s, 'a> {
     }
 }
 
-impl<'s, 'a> Symbol<'s, 'a> {
+impl<'a> Symbol<'_, 'a> {
     /// Is this [`Symbol`] exported?
     ///
     /// NOTE: does not support CJS right now.
@@ -270,7 +270,7 @@ impl<'a> PartialEq<AssignmentTarget<'a>> for Symbol<'_, 'a> {
     }
 }
 
-impl<'s, 'a> PartialEq<ImportDeclarationSpecifier<'a>> for Symbol<'s, 'a> {
+impl<'a> PartialEq<ImportDeclarationSpecifier<'a>> for Symbol<'_, 'a> {
     fn eq(&self, import: &ImportDeclarationSpecifier<'a>) -> bool {
         self == import.local()
     }

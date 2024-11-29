@@ -66,7 +66,7 @@ trait ExpressionExt {
     fn is_increment_of(&self, var_name: &str) -> bool;
 }
 
-impl<'a> ExpressionExt for Expression<'a> {
+impl ExpressionExt for Expression<'_> {
     fn is_increment_of(&self, var_name: &str) -> bool {
         match self {
             Expression::UpdateExpression(expr) => match (&expr.argument, &expr.operator) {
@@ -306,5 +306,5 @@ fn test() {
         "function* gen() { for (let i = 0; i < this.array.length; ++i) { yield this.array[i]; } }",
     ];
 
-    Tester::new(PreferForOf::NAME, pass, fail).test_and_snapshot();
+    Tester::new(PreferForOf::NAME, PreferForOf::CATEGORY, pass, fail).test_and_snapshot();
 }

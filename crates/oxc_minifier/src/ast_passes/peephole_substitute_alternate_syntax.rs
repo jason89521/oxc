@@ -7,7 +7,7 @@ use oxc_syntax::{
     number::NumberBase,
     operator::{BinaryOperator, UnaryOperator},
 };
-use oxc_traverse::{Ancestor, Traverse, TraverseCtx};
+use oxc_traverse::{traverse_mut_with_ctx, Ancestor, ReusableTraverseCtx, Traverse, TraverseCtx};
 
 use crate::{node_util::Ctx, CompressorPass};
 
@@ -24,17 +24,13 @@ pub struct PeepholeSubstituteAlternateSyntax {
     // states
     in_define_export: bool,
 
-    changed: bool,
+    pub(crate) changed: bool,
 }
 
 impl<'a> CompressorPass<'a> for PeepholeSubstituteAlternateSyntax {
-    fn changed(&self) -> bool {
-        self.changed
-    }
-
-    fn build(&mut self, program: &mut Program<'a>, ctx: &mut TraverseCtx<'a>) {
+    fn build(&mut self, program: &mut Program<'a>, ctx: &mut ReusableTraverseCtx<'a>) {
         self.changed = false;
-        oxc_traverse::walk_program(self, program, ctx);
+        traverse_mut_with_ctx(self, program, ctx);
     }
 }
 
@@ -118,7 +114,7 @@ impl<'a> Traverse<'a> for PeepholeSubstituteAlternateSyntax {
             }
             Expression::TemplateLiteral(_) => {
                 if let Some(val) = expr.to_js_string() {
-                    *expr = ctx.ast.expression_string_literal(expr.span(), val);
+                    *expr = ctx.ast.expression_string_literal(expr.span(), val, None);
                     self.changed = true;
                 }
             }
@@ -271,7 +267,7 @@ impl<'a, 'b> PeepholeSubstituteAlternateSyntax {
         };
         let argument = Expression::Identifier(ctx.alloc(id_ref));
         let left = ctx.ast.expression_unary(SPAN, UnaryOperator::Typeof, argument);
-        let right = ctx.ast.expression_string_literal(SPAN, "u");
+        let right = ctx.ast.expression_string_literal(SPAN, "u", None);
         let binary_expr =
             ctx.ast.binary_expression(expr.span, left, BinaryOperator::GreaterThan, right);
         *expr = binary_expr;
@@ -521,7 +517,7 @@ impl<'a, 'b> PeepholeSubstituteAlternateSyntax {
 
             Some(ctx.ast.expression_binary(
                 call_expr.span,
-                ctx.ast.expression_string_literal(SPAN, ""),
+                ctx.ast.expression_string_literal(SPAN, "", None),
                 BinaryOperator::Addition,
                 ctx.ast.move_expression(arg),
             ))

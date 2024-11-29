@@ -1,12 +1,12 @@
-import { assert, describe, it } from 'vitest';
+import { assert, describe, it, test } from 'vitest';
 
-import oxc from './index';
+import { transform } from '../index';
 
 describe('simple', () => {
   const code = 'export class A<T> {}';
 
   it('matches output', () => {
-    const ret = oxc.transform('test.ts', code, { sourcemap: true });
+    const ret = transform('test.ts', code, { sourcemap: true });
     assert.deepEqual(ret, {
       code: 'export class A {}\n',
       errors: [],
@@ -21,12 +21,12 @@ describe('simple', () => {
   });
 
   it('uses the `lang` option', () => {
-    const ret = oxc.transform('test.vue', code, { lang: 'ts' });
+    const ret = transform('test.vue', code, { lang: 'ts' });
     assert.equal(ret.code, 'export class A {}\n');
   });
 
   it('uses the `declaration option`', () => {
-    const ret = oxc.transform('test.ts', code, { typescript: { declaration: true } });
+    const ret = transform('test.ts', code, { typescript: { declaration: {} } });
     assert.equal(ret.declaration, 'export declare class A<T> {}\n');
   });
 });
@@ -44,9 +44,44 @@ describe('transform', () => {
       'class foo {\n\tstatic {}\n}',
     ];
     for (const code of cases) {
-      const ret = oxc.transform('test.ts', code);
+      const ret = transform('test.ts', code);
       assert.equal(ret.code.trim(), code);
     }
+  });
+});
+
+describe('target', () => {
+  const data = [
+    ['es2015', 'a ** b;\n'],
+    ['es2016', 'async function foo() {}\n'],
+    ['es2017', '({ ...x });\n'],
+    ['es2017', 'try {} catch {}\n'],
+    ['es2019', 'a?.b;\n'],
+    ['es2019', 'a ?? b;\n'],
+    ['es2021', 'class foo {\n\tstatic {}\n}\n'],
+  ];
+
+  test.each(data)('transform %s', (target, code) => {
+    // Also test array syntax.
+    const ret = transform('test.js', code, { target: [target] });
+    assert(ret.errors.length == 0);
+    assert(ret.code);
+    assert.notEqual(ret.code, code);
+  });
+
+  test.each(data)('no transform esnext: %s', (_target, code) => {
+    const ret = transform('test.js', code, { target: 'esnext' });
+    assert(ret.errors.length == 0);
+    assert(ret.code);
+    assert.equal(ret.code, code);
+  });
+
+  it('should turn off class propertiers because plugin is not ready', () => {
+    const code = 'class Foo {\n\t#a;\n}\n';
+    const ret = transform('test.js', code, { target: 'es2015' });
+    assert(ret.errors.length == 0);
+    assert(ret.code);
+    assert.equal(ret.code, code);
   });
 });
 
@@ -56,9 +91,9 @@ describe('modules', () => {
 export = function foo (): void {}
 import bar = require('bar')
 `;
-    const ret = oxc.transform('test.ts', code, {
+    const ret = transform('test.ts', code, {
       typescript: {
-        declaration: true,
+        declaration: {},
       },
     });
     assert.deepEqual(ret, {
@@ -77,7 +112,7 @@ describe('react refresh plugin', () => {
   };`;
 
   it('matches output', () => {
-    const ret = oxc.transform('test.tsx', code, { jsx: { refresh: {} } });
+    const ret = transform('test.tsx', code, { jsx: { refresh: {} } });
     assert.equal(
       ret.code,
       `import { useState } from "react";
@@ -103,7 +138,7 @@ $RefreshReg$(_c, "App");
 describe('define plugin', () => {
   it('matches output', () => {
     const code = 'if (process.env.NODE_ENV === "production") { foo; }';
-    const ret = oxc.transform('test.tsx', code, {
+    const ret = transform('test.tsx', code, {
       define: {
         'process.env.NODE_ENV': '"development"',
       },
@@ -113,7 +148,7 @@ describe('define plugin', () => {
 
   it('handles typescript declare global', () => {
     const code = 'declare let __TEST_DEFINE__: string; console.log({ __TEST_DEFINE__ });';
-    const ret = oxc.transform('test.ts', code, {
+    const ret = transform('test.ts', code, {
       define: {
         '__TEST_DEFINE__': '"replaced"',
       },
@@ -126,7 +161,7 @@ describe('inject plugin', () => {
   const code = 'let _ = Object.assign';
 
   it('matches output', () => {
-    const ret = oxc.transform('test.tsx', code, {
+    const ret = transform('test.tsx', code, {
       inject: {
         'Object.assign': 'foo',
       },

@@ -1,8 +1,8 @@
-commit: d20b314c
+commit: 54a8389f
 
 semantic_babel Summary:
-AST Parsed     : 2210/2210 (100.00%)
-Positive Passed: 1841/2210 (83.30%)
+AST Parsed     : 2218/2218 (100.00%)
+Positive Passed: 1849/2218 (83.36%)
 tasks/coverage/babel/packages/babel-parser/test/fixtures/annex-b/enabled/3.3-function-in-if-body/input.js
 semantic error: Symbol scope ID mismatch for "f":
 after transform: SymbolId(0): ScopeId(4294967294)
@@ -25,24 +25,6 @@ semantic error: A 'return' statement can only be used within a function body.
 
 tasks/coverage/babel/packages/babel-parser/test/fixtures/core/uncategorised/328/input.js
 semantic error: A 'return' statement can only be used within a function body.
-
-tasks/coverage/babel/packages/babel-parser/test/fixtures/es2015/uncategorised/385/input.js
-semantic error: Symbol flags mismatch for "_foo":
-after transform: SymbolId(1): SymbolFlags(FunctionScopedVariable)
-rebuilt        : SymbolId(2): SymbolFlags(BlockScopedVariable | Function)
-
-tasks/coverage/babel/packages/babel-parser/test/fixtures/es2017/async-functions/25/input.js
-semantic error: Symbol flags mismatch for "_foo":
-after transform: SymbolId(1): SymbolFlags(FunctionScopedVariable)
-rebuilt        : SymbolId(2): SymbolFlags(BlockScopedVariable | Function)
-
-tasks/coverage/babel/packages/babel-parser/test/fixtures/es2017/async-functions/export/input.js
-semantic error: Symbol flags mismatch for "_foo":
-after transform: SymbolId(2): SymbolFlags(FunctionScopedVariable)
-rebuilt        : SymbolId(2): SymbolFlags(BlockScopedVariable | Function)
-Symbol flags mismatch for "_bar":
-after transform: SymbolId(4): SymbolFlags(FunctionScopedVariable)
-rebuilt        : SymbolId(4): SymbolFlags(BlockScopedVariable | Function)
 
 tasks/coverage/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/await-in-private-property-in-params-of-async-arrow/input.js
 semantic error: Expected a semicolon or an implicit semicolon after a statement, but found none
@@ -594,6 +576,12 @@ after transform: ScopeId(0): ["x", "y"]
 rebuilt        : ScopeId(0): []
 
 tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/declare/eval/input.ts
+semantic error: Cannot assign to 'eval' in strict mode
+Cannot assign to 'arguments' in strict mode
+Cannot assign to 'eval' in strict mode
+Cannot assign to 'arguments' in strict mode
+
+tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/declare/eval-babel-7/input.ts
 semantic error: Cannot assign to 'eval' in strict mode
 Cannot assign to 'arguments' in strict mode
 Cannot assign to 'eval' in strict mode
@@ -1416,6 +1404,14 @@ Scope children mismatch:
 after transform: ScopeId(0): [ScopeId(1)]
 rebuilt        : ScopeId(0): []
 
+tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/global-in-module-babel-7/input.ts
+semantic error: Bindings mismatch:
+after transform: ScopeId(0): ["m"]
+rebuilt        : ScopeId(0): []
+Scope children mismatch:
+after transform: ScopeId(0): [ScopeId(1)]
+rebuilt        : ScopeId(0): []
+
 tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/head/input.ts
 semantic error: Bindings mismatch:
 after transform: ScopeId(0): ["M", "N", "m"]
@@ -1425,6 +1421,14 @@ after transform: ScopeId(0): [ScopeId(1), ScopeId(2), ScopeId(5), ScopeId(6)]
 rebuilt        : ScopeId(0): []
 
 tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/head-declare/input.ts
+semantic error: Bindings mismatch:
+after transform: ScopeId(0): ["M", "N", "m"]
+rebuilt        : ScopeId(0): []
+Scope children mismatch:
+after transform: ScopeId(0): [ScopeId(1), ScopeId(3), ScopeId(4), ScopeId(5)]
+rebuilt        : ScopeId(0): []
+
+tasks/coverage/babel/packages/babel-parser/test/fixtures/typescript/module-namespace/head-declare-babel-7/input.ts
 semantic error: Bindings mismatch:
 after transform: ScopeId(0): ["M", "N", "m"]
 rebuilt        : ScopeId(0): []

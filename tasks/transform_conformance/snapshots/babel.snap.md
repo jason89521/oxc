@@ -1,6 +1,6 @@
-commit: d20b314c
+commit: 54a8389f
 
-Passed: 327/575
+Passed: 414/846
 
 # All Passed:
 * babel-plugin-transform-class-static-block
@@ -13,7 +13,7 @@ Passed: 327/575
 * babel-plugin-transform-react-jsx-source
 
 
-# babel-preset-env (41/127)
+# babel-preset-env (43/130)
 * dynamic-import/auto-esm-unsupported-import-unsupported/input.mjs
 x Output mismatch
 
@@ -152,6 +152,9 @@ x Output mismatch
 * preset-options/no-options/input.mjs
 x Output mismatch
 
+* preset-options/regexp-modifiers-chrome-121/input.js
+x Output mismatch
+
 * preset-options/reserved-keys-ie8/input.mjs
 x Output mismatch
 
@@ -224,6 +227,9 @@ x Output mismatch
 * preset-options-babel-7/no-options/input.mjs
 x Output mismatch
 
+* preset-options-babel-7/regexp-modifiers-chrome-121/input.js
+x Output mismatch
+
 * preset-options-babel-7/reserved-keys-ie8/input.mjs
 x Output mismatch
 
@@ -263,13 +269,716 @@ x Output mismatch
 * sanity/transform-duplicate-keys/input.js
 x Output mismatch
 
-* shipped-proposals/import-assertions/input.mjs
-x Output mismatch
-
 * shipped-proposals/new-class-features-chrome-90/input.js
 x Output mismatch
 
 * shipped-proposals/new-class-features-firefox-70/input.js
+x Output mismatch
+
+
+# babel-plugin-transform-class-properties (87/264)
+* assumption-constantSuper/complex-super-class/input.js
+x Output mismatch
+
+* assumption-constantSuper/static-field/input.js
+x Output mismatch
+
+* assumption-noDocumentAll/optional-chain-before-member-call/input.js
+x Output mismatch
+
+* assumption-noDocumentAll/optional-chain-cast-to-boolean/input.js
+x Output mismatch
+
+* assumption-noUninitializedPrivateFieldAccess/static-private/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/computed/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/constructor-collision/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/foobar/input.js
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(2): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(3): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+
+* assumption-setPublicClassFields/regression-T7364/input.mjs
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(7)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(7): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+Scope children mismatch:
+after transform: ScopeId(3): [ScopeId(4), ScopeId(8)]
+rebuilt        : ScopeId(4): [ScopeId(5)]
+Scope children mismatch:
+after transform: ScopeId(8): []
+rebuilt        : ScopeId(5): [ScopeId(6)]
+Scope parent mismatch:
+after transform: ScopeId(4): Some(ScopeId(3))
+rebuilt        : ScopeId(6): Some(ScopeId(5))
+Scope children mismatch:
+after transform: ScopeId(5): [ScopeId(6), ScopeId(9)]
+rebuilt        : ScopeId(7): [ScopeId(8)]
+Scope children mismatch:
+after transform: ScopeId(9): []
+rebuilt        : ScopeId(8): [ScopeId(9)]
+Scope parent mismatch:
+after transform: ScopeId(6): Some(ScopeId(5))
+rebuilt        : ScopeId(9): Some(ScopeId(8))
+
+* assumption-setPublicClassFields/static-class-binding/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/static-infer-name/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/static-super/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/static-super-loose/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/static-this/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/super-expression/input.js
+x Output mismatch
+
+* assumption-setPublicClassFields/super-with-collision/input.js
+x Output mismatch
+
+* class-name-tdz/general/input.js
+x Output mismatch
+
+* class-name-tdz/static-edgest-case/input.js
+x Output mismatch
+
+* class-name-tdz/static-general/input.js
+x Output mismatch
+
+* class-name-tdz/static-loose/input.js
+x Output mismatch
+
+* compile-to-class/constructor-collision-ignores-types/input.js
+Unresolved references mismatch:
+after transform: ["T", "babelHelpers"]
+rebuilt        : ["babelHelpers"]
+
+* compile-to-class/constructor-collision-ignores-types-loose/input.js
+Unresolved references mismatch:
+after transform: ["T"]
+rebuilt        : []
+
+* nested-class/super-call-in-decorator/input.js
+x Output mismatch
+
+* nested-class/super-property-in-accessor-key/input.js
+x Output mismatch
+
+* nested-class/super-property-in-decorator/input.js
+x Output mismatch
+
+* private/1-helpermemberexpressionfunction/input.js
+x Output mismatch
+
+* private/call/input.js
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3), ScopeId(4)]
+rebuilt        : ScopeId(1): [ScopeId(2), ScopeId(4)]
+Scope children mismatch:
+after transform: ScopeId(4): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+
+* private/class-shadow-builtins/input.mjs
+x Output mismatch
+
+* private/constructor-collision/input.js
+x Output mismatch
+
+* private/derived-multiple-supers/input.js
+x Output mismatch
+
+* private/destructuring-array-pattern/input.js
+x Output mismatch
+
+* private/destructuring-array-pattern-1/input.js
+x Output mismatch
+
+* private/destructuring-array-pattern-2/input.js
+x Output mismatch
+
+* private/destructuring-array-pattern-3/input.js
+x Output mismatch
+
+* private/destructuring-array-pattern-static/input.js
+x Output mismatch
+
+* private/destructuring-object-pattern/input.js
+x Output mismatch
+
+* private/destructuring-object-pattern-1/input.js
+x Output mismatch
+
+* private/destructuring-object-pattern-2/input.js
+x Output mismatch
+
+* private/destructuring-object-pattern-3/input.js
+x Output mismatch
+
+* private/destructuring-object-pattern-static/input.js
+x Output mismatch
+
+* private/extracted-this/input.js
+x Output mismatch
+
+* private/foobar/input.js
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(2): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(3): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+
+* private/nested-class-computed-redeclared/input.js
+x Output mismatch
+
+* private/nested-class-extends-computed/input.js
+x Output mismatch
+
+* private/nested-class-extends-computed-redeclared/input.js
+x Output mismatch
+
+* private/optional-chain-before-member-call/input.js
+x Output mismatch
+
+* private/optional-chain-before-member-call-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-before-property/input.js
+x Output mismatch
+
+* private/optional-chain-before-property-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-cast-to-boolean/input.js
+x Output mismatch
+
+* private/optional-chain-delete-property/input.js
+x Output mismatch
+
+* private/optional-chain-delete-property-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-in-function-param/input.js
+x Output mismatch
+
+* private/optional-chain-in-function-param-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-member-optional-call/input.js
+x Output mismatch
+
+* private/optional-chain-member-optional-call-spread-arguments/input.js
+x Output mismatch
+
+* private/optional-chain-member-optional-call-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-optional-member-call/input.js
+x Output mismatch
+
+* private/optional-chain-optional-member-call-with-transform/input.js
+x Output mismatch
+
+* private/optional-chain-optional-property/input.js
+x Output mismatch
+
+* private/optional-chain-optional-property-with-transform/input.js
+x Output mismatch
+
+* private/parenthesized-optional-member-call/input.js
+x Output mismatch
+
+* private/parenthesized-optional-member-call-with-transform/input.js
+x Output mismatch
+
+* private/regression-T7364/input.mjs
+x Output mismatch
+
+* private/static-call/input.js
+Scope children mismatch:
+after transform: ScopeId(0): [ScopeId(1)]
+rebuilt        : ScopeId(0): [ScopeId(1), ScopeId(3)]
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope flags mismatch:
+after transform: ScopeId(2): ScopeFlags(StrictMode | Function)
+rebuilt        : ScopeId(3): ScopeFlags(Function)
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(0))
+Symbol reference IDs mismatch for "Foo":
+after transform: SymbolId(0): [ReferenceId(1), ReferenceId(4)]
+rebuilt        : SymbolId(0): [ReferenceId(1)]
+
+* private/static-class-binding/input.js
+x Output mismatch
+
+* private/static-infer-name/input.js
+x Output mismatch
+
+* private/static-self-field/input.js
+x Output mismatch
+
+* private/static-shadow/input.js
+x Output mismatch
+
+* private/static-this/input.js
+x Output mismatch
+
+* private/super-expression/input.js
+x Output mismatch
+
+* private-loose/assignment/input.js
+x Output mismatch
+
+* private-loose/call/input.js
+x Output mismatch
+
+* private-loose/canonical/input.js
+x Output mismatch
+
+* private-loose/class-shadow-builtins/input.mjs
+x Output mismatch
+
+* private-loose/constructor-collision/input.js
+x Output mismatch
+
+* private-loose/declaration-order/input.js
+x Output mismatch
+
+* private-loose/derived/input.js
+x Output mismatch
+
+* private-loose/derived-multiple-supers/input.js
+x Output mismatch
+
+* private-loose/destructuring-array-pattern/input.js
+x Output mismatch
+
+* private-loose/destructuring-array-pattern-1/input.js
+x Output mismatch
+
+* private-loose/destructuring-array-pattern-2/input.js
+x Output mismatch
+
+* private-loose/destructuring-array-pattern-3/input.js
+x Output mismatch
+
+* private-loose/destructuring-array-pattern-static/input.js
+x Output mismatch
+
+* private-loose/destructuring-object-pattern/input.js
+x Output mismatch
+
+* private-loose/destructuring-object-pattern-1/input.js
+x Output mismatch
+
+* private-loose/destructuring-object-pattern-2/input.js
+x Output mismatch
+
+* private-loose/destructuring-object-pattern-3/input.js
+x Output mismatch
+
+* private-loose/destructuring-object-pattern-static/input.js
+x Output mismatch
+
+* private-loose/extracted-this/input.js
+x Output mismatch
+
+* private-loose/foobar/input.js
+x Output mismatch
+
+* private-loose/instance/input.js
+x Output mismatch
+
+* private-loose/instance-undefined/input.js
+x Output mismatch
+
+* private-loose/logical-assignment/input.js
+x Output mismatch
+
+* private-loose/multiple/input.js
+x Output mismatch
+
+* private-loose/native-classes/input.js
+x Output mismatch
+
+* private-loose/nested-class/input.js
+x Output mismatch
+
+* private-loose/nested-class-computed/input.js
+x Output mismatch
+
+* private-loose/nested-class-computed-redeclared/input.js
+x Output mismatch
+
+* private-loose/nested-class-extends-computed/input.js
+x Output mismatch
+
+* private-loose/nested-class-extends-computed-redeclared/input.js
+x Output mismatch
+
+* private-loose/nested-class-other-redeclared/input.js
+x Output mismatch
+
+* private-loose/nested-class-redeclared/input.js
+x Output mismatch
+
+* private-loose/non-block-arrow-func/input.mjs
+x Output mismatch
+
+* private-loose/optional-chain-before-member-call/input.js
+x Output mismatch
+
+* private-loose/optional-chain-before-member-call-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-before-property/input.js
+x Output mismatch
+
+* private-loose/optional-chain-before-property-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-cast-to-boolean/input.js
+x Output mismatch
+
+* private-loose/optional-chain-delete-property/input.js
+x Output mismatch
+
+* private-loose/optional-chain-delete-property-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-in-function-param/input.js
+x Output mismatch
+
+* private-loose/optional-chain-in-function-param-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-member-optional-call/input.js
+x Output mismatch
+
+* private-loose/optional-chain-member-optional-call-spread-arguments/input.js
+x Output mismatch
+
+* private-loose/optional-chain-member-optional-call-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-optional-member-call/input.js
+x Output mismatch
+
+* private-loose/optional-chain-optional-member-call-with-transform/input.js
+x Output mismatch
+
+* private-loose/optional-chain-optional-property/input.js
+x Output mismatch
+
+* private-loose/optional-chain-optional-property-with-transform/input.js
+x Output mismatch
+
+* private-loose/parenthesized-optional-member-call/input.js
+x Output mismatch
+
+* private-loose/parenthesized-optional-member-call-with-transform/input.js
+x Output mismatch
+
+* private-loose/preserve-comments/input.js
+x Output mismatch
+
+* private-loose/private-in-derived/input.js
+x Output mismatch
+
+* private-loose/reevaluated/input.js
+x Output mismatch
+
+* private-loose/reference-in-other-property/input.js
+x Output mismatch
+
+* private-loose/static/input.js
+x Output mismatch
+
+* private-loose/static-call/input.js
+x Output mismatch
+
+* private-loose/static-class-binding/input.js
+x Output mismatch
+
+* private-loose/static-export/input.mjs
+x Output mismatch
+
+* private-loose/static-infer-name/input.js
+x Output mismatch
+
+* private-loose/static-inherited/input.js
+x Output mismatch
+
+* private-loose/static-shadow/input.js
+x Output mismatch
+
+* private-loose/static-this/input.js
+x Output mismatch
+
+* private-loose/static-undefined/input.js
+x Output mismatch
+
+* private-loose/super-expression/input.js
+x Output mismatch
+
+* private-loose/super-statement/input.js
+x Output mismatch
+
+* private-loose/update/input.js
+x Output mismatch
+
+* public/arrow-static-this-without-transform/input.js
+x Output mismatch
+
+* public/call/input.js
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3), ScopeId(4)]
+rebuilt        : ScopeId(1): [ScopeId(2), ScopeId(4)]
+Scope children mismatch:
+after transform: ScopeId(4): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+
+* public/class-shadow-builtins/input.mjs
+x Output mismatch
+
+* public/computed/input.js
+x Output mismatch
+
+* public/computed-toPrimitive/input.js
+x Output mismatch
+
+* public/constructor-collision/input.js
+x Output mismatch
+
+* public/delete-super-property/input.js
+x Output mismatch
+
+* public/derived-multiple-supers/input.js
+x Output mismatch
+
+* public/derived-super-in-default-params/input.js
+x Output mismatch
+
+* public/derived-super-in-default-params-complex/input.js
+x Output mismatch
+
+* public/derived-super-in-default-params-in-arrow/input.js
+x Output mismatch
+
+* public/extracted-this/input.js
+x Output mismatch
+
+* public/foobar/input.js
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(3)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(2): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(3): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+
+* public/regression-T7364/input.mjs
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(7)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(7): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+Scope children mismatch:
+after transform: ScopeId(3): [ScopeId(4), ScopeId(8)]
+rebuilt        : ScopeId(4): [ScopeId(5)]
+Scope children mismatch:
+after transform: ScopeId(8): []
+rebuilt        : ScopeId(5): [ScopeId(6)]
+Scope parent mismatch:
+after transform: ScopeId(4): Some(ScopeId(3))
+rebuilt        : ScopeId(6): Some(ScopeId(5))
+Scope children mismatch:
+after transform: ScopeId(5): [ScopeId(6), ScopeId(9)]
+rebuilt        : ScopeId(7): [ScopeId(8)]
+Scope children mismatch:
+after transform: ScopeId(9): []
+rebuilt        : ScopeId(8): [ScopeId(9)]
+Scope parent mismatch:
+after transform: ScopeId(6): Some(ScopeId(5))
+rebuilt        : ScopeId(9): Some(ScopeId(8))
+
+* public/static-class-binding/input.js
+x Output mismatch
+
+* public/static-infer-name/input.js
+x Output mismatch
+
+* public/static-super/input.js
+x Output mismatch
+
+* public/static-this/input.js
+x Output mismatch
+
+* public/super-expression/input.js
+x Output mismatch
+
+* public/super-with-collision/input.js
+x Output mismatch
+
+* public-loose/arrow-static-this-without-transform/input.js
+x Output mismatch
+
+* public-loose/class-shadow-builtins/input.mjs
+x Output mismatch
+
+* public-loose/computed/input.js
+x Output mismatch
+
+* public-loose/constructor-collision/input.js
+x Output mismatch
+
+* public-loose/foobar/input.js
+x Output mismatch
+
+* public-loose/regression-T7364/input.mjs
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(7)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(7): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+Scope children mismatch:
+after transform: ScopeId(3): [ScopeId(4), ScopeId(8)]
+rebuilt        : ScopeId(4): [ScopeId(5)]
+Scope children mismatch:
+after transform: ScopeId(8): []
+rebuilt        : ScopeId(5): [ScopeId(6)]
+Scope parent mismatch:
+after transform: ScopeId(4): Some(ScopeId(3))
+rebuilt        : ScopeId(6): Some(ScopeId(5))
+Scope children mismatch:
+after transform: ScopeId(5): [ScopeId(6), ScopeId(9)]
+rebuilt        : ScopeId(7): [ScopeId(8)]
+Scope children mismatch:
+after transform: ScopeId(9): []
+rebuilt        : ScopeId(8): [ScopeId(9)]
+Scope parent mismatch:
+after transform: ScopeId(6): Some(ScopeId(5))
+rebuilt        : ScopeId(9): Some(ScopeId(8))
+
+* public-loose/static-class-binding/input.js
+x Output mismatch
+
+* public-loose/static-infer-name/input.js
+x Output mismatch
+
+* public-loose/static-super/input.js
+x Output mismatch
+
+* public-loose/static-this/input.js
+x Output mismatch
+
+* public-loose/super-expression/input.js
+x Output mismatch
+
+* public-loose/super-with-collision/input.js
+x Output mismatch
+
+* regression/6153/input.js
+x Output mismatch
+
+* regression/6154/input.js
+x Output mismatch
+
+* regression/7371/input.js
+x Output mismatch
+
+* regression/7951/input.mjs
+x Output mismatch
+
+* regression/8882/input.js
+Bindings mismatch:
+after transform: ScopeId(0): ["classes"]
+rebuilt        : ScopeId(0): ["_A", "_bar", "classes"]
+Bindings mismatch:
+after transform: ScopeId(2): ["_A", "_bar", "_i"]
+rebuilt        : ScopeId(2): ["_i"]
+Symbol scope ID mismatch for "_A":
+after transform: SymbolId(3): ScopeId(2)
+rebuilt        : SymbolId(2): ScopeId(0)
+Symbol scope ID mismatch for "_bar":
+after transform: SymbolId(4): ScopeId(2)
+rebuilt        : SymbolId(3): ScopeId(0)
+
+* regression/T7364/input.mjs
+Scope children mismatch:
+after transform: ScopeId(1): [ScopeId(2), ScopeId(7)]
+rebuilt        : ScopeId(1): [ScopeId(2)]
+Scope children mismatch:
+after transform: ScopeId(7): []
+rebuilt        : ScopeId(2): [ScopeId(3)]
+Scope parent mismatch:
+after transform: ScopeId(2): Some(ScopeId(1))
+rebuilt        : ScopeId(3): Some(ScopeId(2))
+Scope children mismatch:
+after transform: ScopeId(3): [ScopeId(4), ScopeId(8)]
+rebuilt        : ScopeId(4): [ScopeId(5)]
+Scope children mismatch:
+after transform: ScopeId(8): []
+rebuilt        : ScopeId(5): [ScopeId(6)]
+Scope parent mismatch:
+after transform: ScopeId(4): Some(ScopeId(3))
+rebuilt        : ScopeId(6): Some(ScopeId(5))
+Scope children mismatch:
+after transform: ScopeId(5): [ScopeId(6), ScopeId(9)]
+rebuilt        : ScopeId(7): [ScopeId(8)]
+Scope children mismatch:
+after transform: ScopeId(9): []
+rebuilt        : ScopeId(8): [ScopeId(9)]
+Scope parent mismatch:
+after transform: ScopeId(6): Some(ScopeId(5))
+rebuilt        : ScopeId(9): Some(ScopeId(8))
+
+* regression/multiple-super-in-termary/input.js
 x Output mismatch
 
 
@@ -358,8 +1067,20 @@ x Output mismatch
 x Output mismatch
 
 
-# babel-plugin-transform-exponentiation-operator (3/4)
+# babel-plugin-transform-exponentiation-operator (2/7)
+* exponentiation-operator/memoise-object/input.js
+x Output mismatch
+
+* exponentiation-operator/memoise-object-in-default-args/input.js
+x Output mismatch
+
 * regression/4349/input.js
+x Output mismatch
+
+* regression/4349-keep-super/input.js
+x Output mismatch
+
+* regression/4403/input.js
 x Output mismatch
 
 
@@ -389,7 +1110,7 @@ x Output mismatch
 x Output mismatch
 
 
-# babel-preset-typescript (11/16)
+# babel-preset-typescript (10/17)
 * jsx-compat/ts-invalid/input.ts
 
   x Expected `>` but found `/`
@@ -414,6 +1135,12 @@ after transform: ScopeId(1): ["T"]
 rebuilt        : ScopeId(1): []
 
 * opts/optimizeConstEnums/input.ts
+x Output mismatch
+
+* opts/rewriteImportExtensions/input.ts
+x Output mismatch
+
+* opts/rewriteImportExtensions-createImportExpressions/input.ts
 x Output mismatch
 
 

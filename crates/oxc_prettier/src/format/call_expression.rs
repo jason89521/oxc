@@ -4,8 +4,8 @@ use oxc_span::{GetSpan, Span};
 
 use super::call_arguments::print_call_arguments;
 use crate::{
-    doc::{Doc, DocBuilder, Group},
-    ss, Format, Prettier,
+    ir::{Doc, DocBuilder, Group},
+    text, Format, Prettier,
 };
 
 pub(super) enum CallExpressionLike<'a, 'b> {
@@ -13,7 +13,7 @@ pub(super) enum CallExpressionLike<'a, 'b> {
     NewExpression(&'b NewExpression<'a>),
 }
 
-impl<'a, 'b> CallExpressionLike<'a, 'b> {
+impl<'a> CallExpressionLike<'a, '_> {
     pub fn is_new(&self) -> bool {
         matches!(self, CallExpressionLike::NewExpression(_))
     }
@@ -65,7 +65,7 @@ pub(super) fn print_call_expression<'a>(
     let mut parts = p.vec();
 
     if expression.is_new() {
-        parts.push(ss!("new "));
+        parts.push(text!("new "));
     };
 
     parts.push(expression.callee().format(p));
@@ -75,7 +75,7 @@ pub(super) fn print_call_expression<'a>(
     }
 
     if expression.optional() {
-        parts.push(ss!("?."));
+        parts.push(text!("?."));
     }
 
     parts.push(print_call_arguments(p, expression));

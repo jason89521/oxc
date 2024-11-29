@@ -31,8 +31,8 @@ fn is_module_exports(expr: Option<&MemberExpression>, ctx: &LintContext) -> bool
         return false;
     };
 
-    return mem_expr.static_property_name() == Some("exports")
-        && obj_id.is_global_reference_name("module", ctx.symbols());
+    mem_expr.static_property_name() == Some("exports")
+        && obj_id.is_global_reference_name("module", ctx.symbols())
 }
 
 #[derive(Debug, Default, Clone)]
@@ -122,7 +122,7 @@ fn test() {
 
     let fix = vec![("exports = {}", "module.exports = {}")];
 
-    Tester::new(NoExportsAssign::NAME, pass, fail)
+    Tester::new(NoExportsAssign::NAME, NoExportsAssign::CATEGORY, pass, fail)
         .expect_fix(fix)
         .with_node_plugin(true)
         .test_and_snapshot();

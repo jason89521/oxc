@@ -1,4 +1,4 @@
-use oxc_allocator::{Box, CloneIn, Vec};
+use oxc_allocator::{Box, CloneIn, GetAddress, Vec};
 use oxc_ast_macros::ast;
 use oxc_estree::ESTree;
 use oxc_span::{cmp::ContentEq, hash::ContentHash, Atom, GetSpan, Span};
@@ -52,7 +52,7 @@ pub enum Term<'a> {
     NamedReference(Box<'a, NamedReference<'a>>) = 11,
 }
 
-impl<'a> GetSpan for Term<'a> {
+impl GetSpan for Term<'_> {
     #[inline]
     fn span(&self) -> Span {
         match self {
@@ -229,7 +229,7 @@ pub enum CharacterClassContentsKind {
 
 #[ast]
 #[derive(Debug)]
-#[generate_derive(CloneIn, ContentEq, ContentHash, ESTree)]
+#[generate_derive(CloneIn, ContentEq, ContentHash, GetAddress, ESTree)]
 pub enum CharacterClassContents<'a> {
     CharacterClassRange(Box<'a, CharacterClassRange>) = 0,
     CharacterClassEscape(Box<'a, CharacterClassEscape>) = 1,
@@ -241,7 +241,7 @@ pub enum CharacterClassContents<'a> {
     ClassStringDisjunction(Box<'a, ClassStringDisjunction<'a>>) = 5,
 }
 
-impl<'a> GetSpan for CharacterClassContents<'a> {
+impl GetSpan for CharacterClassContents<'_> {
     #[inline]
     fn span(&self) -> Span {
         match self {

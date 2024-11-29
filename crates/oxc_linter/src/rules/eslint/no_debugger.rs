@@ -54,7 +54,7 @@ impl Rule for NoDebugger {
                     | AstKind::WhileStatement(_)
                     | AstKind::ForStatement(_)
                     | AstKind::ForInStatement(_)
-                    | AstKind::ForOfStatement(_) => return fixer.replace(stmt.span, "{}"),
+                    | AstKind::ForOfStatement(_) => fixer.replace(stmt.span, "{}"),
                     // NOTE: no need to check for
                     // AstKind::ArrowFunctionExpression because
                     // `const x = () => debugger` is a parse error
@@ -81,5 +81,7 @@ fn test() {
         ("if (foo) { debugger }", "if (foo) {  }", None),
     ];
 
-    Tester::new(NoDebugger::NAME, pass, fail).expect_fix(fix).test_and_snapshot();
+    Tester::new(NoDebugger::NAME, NoDebugger::CATEGORY, pass, fail)
+        .expect_fix(fix)
+        .test_and_snapshot();
 }

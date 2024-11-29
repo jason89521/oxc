@@ -104,7 +104,7 @@ jobs:
       RUSTFLAGS: "--cfg tokio_unstable -C target-feature=+atomics,+bulk-memory,+mutable-globals,+simd128 -C link-args=--max-memory=67108864"
       CARGO_TARGET_WASM32_WASIP1_THREADS_RUNNER: "wasmtime run -W bulk-memory=y -W threads=y -S threads=y --dir=${{ github.workspace }}::${{ github.workspace }} --"
       # Insta is not able to run on wasmtime, omit the packages that depend on it
-      TEST_FLAGS: "-p oxc_ast -p oxc_cfg -p oxc_index -p oxc_regular_expression -p oxc_module_lexer -- --nocapture"
+      TEST_FLAGS: "-p oxc_ast -p oxc_cfg -p oxc_regular_expression -p oxc_module_lexer -- --nocapture"
     steps:
       - uses: taiki-e/checkout-action@v1
       - uses: Boshen/setup-rust@main
@@ -121,6 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: taiki-e/checkout-action@v1
+
       - uses: Boshen/setup-rust@main
         with:
           cache-key: wasm
@@ -131,11 +132,17 @@ jobs:
           rustup target add wasm32-unknown-unknown
           cargo check -p oxc_wasm --target wasm32-unknown-unknown
       - uses: ./.github/actions/pnpm
+
       - run: just build-wasm debug
+      - working-directory: npm/oxc-wasm
+        run: |
+          sed -i ${{ (runner.os == 'macOS' && '""') || '' }} -e 's/=> Array;/=> number[];/g' oxc_wasm.d.ts
+          pnpm run check
+
       - working-directory: wasm/parser
         run: pnpm run build
-      - name: Check output types
-        run: npx -y -p typescript tsc --lib es2020,dom npm/parser-wasm/node/oxc_parser_wasm.d.ts
+      - working-directory: npm/parser-wasm
+        run: pnpm run check
 
   typos:
     name: Spell Check
@@ -227,9 +234,6 @@ jobs:
       - uses: ./.github/actions/clone-submodules
         if: steps.filter.outputs.src == 'true'
 
-      - uses: oven-sh/setup-bun@v2
-        if: steps.filter.outputs.src == 'true'
-
       - uses: ./.github/actions/pnpm
         if: steps.filter.outputs.src == 'true'
 
@@ -239,6 +243,10 @@ jobs:
           cache-key: conformance
           save-cache: ${{ github.ref_name == 'main' }}
           tools: just
+
+      - name: Update transformer fixtures
+        if: steps.filter.outputs.src == 'true'
+        run: node tasks/transform_conformance/update_fixtures.js
 
       - name: Check Conformance
         if: steps.filter.outputs.src == 'true'

@@ -2,7 +2,7 @@
   "name": "oxc-vscode",
   "description": "oxc vscode extension",
   "license": "MIT",
-  "version": "0.13.0",
+  "version": "0.13.2",
   "icon": "icon.png",
   "publisher": "oxc",
   "displayName": "Oxc",
@@ -92,7 +92,7 @@
         "oxc.configPath": {
           "type": "string",
           "scope": "window",
-          "default": ".eslintrc",
+          "default": ".oxlintrc.json",
           "description": "Path to ESlint configuration."
         },
         "oxc.path.server": {
@@ -108,8 +108,7 @@
           "oxlintrc.json",
           "oxlint.json",
           ".oxlintrc.json",
-          ".oxlint.json",
-          ".oxlintrc"
+          ".oxlint.json"
         ],
         "url": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json"
       }
@@ -121,8 +120,7 @@
           "oxlintrc.json",
           "oxlint.json",
           ".oxlintrc.json",
-          ".oxlint.json",
-          ".oxlintrc"
+          ".oxlint.json"
         ]
       }
     ]
@@ -137,7 +135,8 @@
     "server:build:debug": "cargo build -p oxc_language_server",
     "server:build:release": "cross-env CARGO_TARGET_DIR=./target cargo build -p oxc_language_server --release",
     "lint": "npx oxlint --config=oxlint.json --tsconfig=tsconfig.json",
-    "test": "esbuild client/config.spec.ts --bundle --outfile=out/config.spec.js --external:vscode --format=cjs --platform=node --target=node16 --minify --sourcemap && vscode-test"
+    "test": "esbuild client/config.spec.ts --bundle --outfile=out/config.spec.js --external:vscode --format=cjs --platform=node --target=node16 --minify --sourcemap && vscode-test",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.9",

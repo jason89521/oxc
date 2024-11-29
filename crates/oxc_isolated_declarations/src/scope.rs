@@ -1,7 +1,7 @@
-use std::cell::Cell;
-
 use bitflags::bitflags;
 use rustc_hash::FxHashMap;
+
+use std::cell::Cell;
 
 use oxc_ast::ast::*;
 use oxc_ast::{visit::walk::*, Visit};
@@ -25,7 +25,7 @@ struct Scope<'a> {
     flags: ScopeFlags,
 }
 
-impl<'a> Scope<'a> {
+impl Scope<'_> {
     fn new(flags: ScopeFlags) -> Self {
         Self { bindings: FxHashMap::default(), references: FxHashMap::default(), flags }
     }

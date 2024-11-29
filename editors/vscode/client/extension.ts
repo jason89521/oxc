@@ -58,7 +58,7 @@ export async function activate(context: ExtensionContext) {
   const toggleEnable = commands.registerCommand(
     OxcCommands.ToggleEnable,
     () => {
-      configService.config.enable = !configService.config.enable;
+      configService.config.updateEnable(!configService.config.enable);
     },
   );
 
@@ -142,8 +142,7 @@ export async function activate(context: ExtensionContext) {
     synchronize: {
       // Notify the server about file config changes in the workspace
       fileEvents: [
-        workspace.createFileSystemWatcher('**/.eslintr{c,c.json}'),
-        workspace.createFileSystemWatcher('**/.oxlint{.json,rc.json,rc}'),
+        workspace.createFileSystemWatcher('**/.oxlint{.json,rc.json}'),
         workspace.createFileSystemWatcher('**/oxlint{.json,rc.json}'),
       ],
     },

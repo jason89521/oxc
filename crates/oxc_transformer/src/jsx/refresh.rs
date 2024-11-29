@@ -166,9 +166,11 @@ impl<'a, 'ctx> Traverse<'a> for ReactRefresh<'a, 'ctx> {
             let callee = self.refresh_reg.to_expression(ctx);
             let arguments = ctx.ast.vec_from_array([
                 Argument::from(binding.create_read_expression(ctx)),
-                Argument::from(
-                    ctx.ast.expression_string_literal(SPAN, ctx.ast.atom(&persistent_id)),
-                ),
+                Argument::from(ctx.ast.expression_string_literal(
+                    SPAN,
+                    ctx.ast.atom(&persistent_id),
+                    None,
+                )),
             ]);
             new_statements.push(ctx.ast.statement_expression(
                 SPAN,
@@ -536,7 +538,11 @@ impl<'a, 'ctx> ReactRefresh<'a, 'ctx> {
         let force_reset = custom_hooks_in_scope.len() != callee_len;
 
         let mut arguments = ctx.ast.vec();
-        arguments.push(Argument::from(ctx.ast.expression_string_literal(SPAN, ctx.ast.atom(&key))));
+        arguments.push(Argument::from(ctx.ast.expression_string_literal(
+            SPAN,
+            ctx.ast.atom(&key),
+            None,
+        )));
 
         if force_reset || !custom_hooks_in_scope.is_empty() {
             arguments.push(Argument::from(ctx.ast.expression_boolean_literal(SPAN, force_reset)));
@@ -576,14 +582,7 @@ impl<'a, 'ctx> ReactRefresh<'a, 'ctx> {
             arguments.push(function);
         }
 
-        // TODO: Handle var hoisted in ctx API
-        let target_scope_id = ctx
-            .scopes()
-            .ancestors(ctx.current_scope_id())
-            .find(|&scope_id| ctx.scopes().get_flags(scope_id).is_var())
-            .unwrap_or_else(|| ctx.current_scope_id());
-
-        let binding = ctx.generate_uid("s", target_scope_id, SymbolFlags::FunctionScopedVariable);
+        let binding = ctx.generate_uid_in_current_hoist_scope("s");
 
         // _s();
         let call_expression = ctx.ast.statement_expression(

@@ -51,7 +51,7 @@ use std::mem;
 
 use oxc_allocator::CloneIn;
 use oxc_ast::{ast::*, NONE};
-use oxc_semantic::{IsGlobalReference, SymbolFlags};
+use oxc_semantic::SymbolFlags;
 use oxc_span::SPAN;
 use oxc_traverse::{Ancestor, BoundIdentifier, MaybeBoundIdentifier, Traverse, TraverseCtx};
 
@@ -90,32 +90,18 @@ impl<'a, 'ctx> OptionalChaining<'a, 'ctx> {
 }
 
 impl<'a, 'ctx> Traverse<'a> for OptionalChaining<'a, 'ctx> {
+    // `#[inline]` because this is a hot path
+    #[inline]
     fn enter_expression(&mut self, expr: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        *expr = match expr {
-            Expression::ChainExpression(_) => {
-                if self.is_inside_function_parameter {
-                    // To insert the temp binding in the correct scope, we wrap the expression with
-                    // an arrow function. During the chain expression transformation, the temp binding
-                    // will be inserted into the arrow function's body.
-                    Self::wrap_arrow_function(expr, ctx)
-                } else {
-                    self.transform_chain_expression(false, expr, ctx)
-                }
-            }
+        match expr {
+            Expression::ChainExpression(_) => self.transform_chain_expression(expr, ctx),
             Expression::UnaryExpression(unary_expr)
-                if unary_expr.operator == UnaryOperator::Delete =>
+                if unary_expr.operator == UnaryOperator::Delete
+                    && matches!(unary_expr.argument, Expression::ChainExpression(_)) =>
             {
-                let Expression::ChainExpression(_) = unary_expr.argument else {
-                    return;
-                };
-                if self.is_inside_function_parameter {
-                    // Same as the above explanation
-                    Self::wrap_arrow_function(expr, ctx)
-                } else {
-                    self.transform_chain_expression(true, &mut unary_expr.argument, ctx)
-                }
+                self.transform_update_expression(expr, ctx);
             }
-            _ => return,
+            _ => {}
         };
     }
 
@@ -180,17 +166,26 @@ impl<'a, 'ctx> OptionalChaining<'a, 'ctx> {
         }
     }
 
-    /// Check if we should create a temp variable for the identifier
+    /// Check if we should create a temp variable for the identifier.
     ///
-    /// Except for `eval`, we should create a temp variable for all global references
-    fn should_create_temp_variable_for_identifier(
+    /// Except for `eval`, we should create a temp variable for all global references.
+    ///
+    /// If no temp variable required, returns `MaybeBoundIdentifier` for existing variable/global.
+    /// If temp variable is required, returns `None`.
+    fn get_existing_binding_for_identifier(
         &self,
         ident: &IdentifierReference<'a>,
         ctx: &TraverseCtx<'a>,
-    ) -> bool {
-        !self.ctx.assumptions.pure_getters
-            && ident.is_global_reference(ctx.symbols())
-            && ident.name != "eval"
+    ) -> Option<MaybeBoundIdentifier<'a>> {
+        let binding = MaybeBoundIdentifier::from_identifier_reference(ident, ctx);
+        if self.ctx.assumptions.pure_getters
+            || binding.to_bound_identifier().is_some()
+            || ident.name == "eval"
+        {
+            Some(binding)
+        } else {
+            None
+        }
     }
 
     /// Return `left === null`
@@ -322,12 +317,41 @@ impl<'a, 'ctx> OptionalChaining<'a, 'ctx> {
         ctx.ast.expression_assignment(SPAN, AssignmentOperator::Assign, left, right)
     }
 
+    /// Transform chain expression
+    fn transform_chain_expression(&mut self, expr: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
+        *expr = if self.is_inside_function_parameter {
+            // To insert the temp binding in the correct scope, we wrap the expression with
+            // an arrow function. During the chain expression transformation, the temp binding
+            // will be inserted into the arrow function's body.
+            Self::wrap_arrow_function(expr, ctx)
+        } else {
+            self.transform_chain_expression_impl(false, expr, ctx)
+        }
+    }
+
+    /// Transform update expression
+    fn transform_update_expression(
+        &mut self,
+        expr: &mut Expression<'a>,
+        ctx: &mut TraverseCtx<'a>,
+    ) {
+        *expr = if self.is_inside_function_parameter {
+            // Same as the above `transform_chain_expression` explanation
+            Self::wrap_arrow_function(expr, ctx)
+        } else {
+            // Unfortunately no way to get compiler to see that this branch is provably unreachable.
+            // We don't want to inline this function, to keep `enter_expression` as small as possible.
+            let Expression::UnaryExpression(unary_expr) = expr else { unreachable!() };
+            self.transform_chain_expression_impl(true, &mut unary_expr.argument, ctx)
+        }
+    }
+
     /// Transform chain expression to conditional expression which contains a lot of checks
     ///
     /// This is the root transform function for chain expressions. It calls
     /// [`Self::transform_chain_element_recursion`] to transform the chain expression elements,
     /// and then joins the transformed elements with the conditional expression.
-    fn transform_chain_expression(
+    fn transform_chain_expression_impl(
         &mut self,
         is_delete: bool,
         chain_expr: &mut Expression<'a>,
@@ -544,8 +568,7 @@ impl<'a, 'ctx> OptionalChaining<'a, 'ctx> {
         // If the expression is an identifier and it's not a global reference, we just wrap it with checks
         // `foo` -> `foo === null || foo === void 0`
         if let Expression::Identifier(ident) = expr {
-            if !self.should_create_temp_variable_for_identifier(ident, ctx) {
-                let binding = MaybeBoundIdentifier::from_identifier_reference(ident, ctx);
+            if let Some(binding) = self.get_existing_binding_for_identifier(ident, ctx) {
                 let left1 = binding.create_read_expression(ctx);
                 let left2 = binding.create_read_expression(ctx);
                 if ident.name == "eval" {
@@ -568,18 +591,17 @@ impl<'a, 'ctx> OptionalChaining<'a, 'ctx> {
                 // If the [`MemberExpression::object`] is a global reference, we need to assign it to a temp binding.
                 // i.e `foo` -> `(_foo = foo)`
                 if let Expression::Identifier(ident) = object {
-                    let binding = if self.should_create_temp_variable_for_identifier(ident, ctx) {
-                        let binding = self.generate_binding(object, ctx);
-                        // `(_foo = foo)`
-                        *object = Self::create_assignment_expression(
-                            binding.create_write_target(ctx),
-                            ctx.ast.move_expression(object),
-                            ctx,
-                        );
-                        binding.to_maybe_bound_identifier()
-                    } else {
-                        MaybeBoundIdentifier::from_identifier_reference(ident, ctx)
-                    };
+                    let binding =
+                        self.get_existing_binding_for_identifier(ident, ctx).unwrap_or_else(|| {
+                            let binding = self.generate_binding(object, ctx);
+                            // `(_foo = foo)`
+                            *object = Self::create_assignment_expression(
+                                binding.create_write_target(ctx),
+                                ctx.ast.move_expression(object),
+                                ctx,
+                            );
+                            binding.to_maybe_bound_identifier()
+                        });
                     self.set_binding_context(binding);
                 } else if matches!(object, Expression::Super(_)) {
                     self.set_this_context();

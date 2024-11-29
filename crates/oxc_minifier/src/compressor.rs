@@ -1,13 +1,12 @@
 use oxc_allocator::Allocator;
 use oxc_ast::ast::*;
 use oxc_semantic::{ScopeTree, SemanticBuilder, SymbolTable};
-use oxc_traverse::TraverseCtx;
+use oxc_traverse::ReusableTraverseCtx;
 
 use crate::{
     ast_passes::{
-        CollapseVariableDeclarations, ExploitAssigns, PeepholeFoldConstants,
-        PeepholeMinimizeConditions, PeepholeRemoveDeadCode, PeepholeReplaceKnownMethods,
-        PeepholeSubstituteAlternateSyntax, RemoveSyntax, StatementFusion,
+        CollapsePass, LatePeepholeOptimizations, PeepholeFoldConstants, PeepholeMinimizeConditions,
+        PeepholeOptimizations, PeepholeRemoveDeadCode, RemoveSyntax,
     },
     CompressOptions, CompressorPass,
 };
@@ -34,7 +33,7 @@ impl<'a> Compressor<'a> {
         scopes: ScopeTree,
         program: &mut Program<'a>,
     ) {
-        let mut ctx = TraverseCtx::new(scopes, symbols, self.allocator);
+        let mut ctx = ReusableTraverseCtx::new(scopes, symbols, self.allocator);
         RemoveSyntax::new(self.options).build(program, &mut ctx);
 
         if self.options.dead_code_elimination {
@@ -42,45 +41,13 @@ impl<'a> Compressor<'a> {
             return;
         }
 
-        // See `latePeepholeOptimizations`
-        let mut passes: [&mut dyn CompressorPass; 6] = [
-            &mut StatementFusion::new(),
-            &mut PeepholeRemoveDeadCode::new(),
-            // TODO: MinimizeExitPoints
-            &mut PeepholeMinimizeConditions::new(),
-            &mut PeepholeSubstituteAlternateSyntax::new(/* in_fixed_loop */ true),
-            &mut PeepholeReplaceKnownMethods::new(),
-            &mut PeepholeFoldConstants::new(),
-        ];
-
-        let mut i = 0;
-        loop {
-            let mut changed = false;
-            for pass in &mut passes {
-                pass.build(program, &mut ctx);
-                if pass.changed() {
-                    changed = true;
-                }
-            }
-            if !changed {
-                break;
-            }
-            if i > 50 {
-                debug_assert!(false, "Ran in a infinite loop.");
-                break;
-            }
-            i += 1;
-        }
-
-        // Passes listed in `getFinalization` in `DefaultPassConfig`
-        ExploitAssigns::new().build(program, &mut ctx);
-        CollapseVariableDeclarations::new().build(program, &mut ctx);
-
-        // Late latePeepholeOptimizations
-        PeepholeSubstituteAlternateSyntax::new(/* in_fixed_loop */ false).build(program, &mut ctx);
+        PeepholeOptimizations::new().build(program, &mut ctx);
+        CollapsePass::new().build(program, &mut ctx);
+        LatePeepholeOptimizations::new().run_in_loop(program, &mut ctx);
+        PeepholeOptimizations::new().build(program, &mut ctx);
     }
 
-    fn dead_code_elimination(program: &mut Program<'a>, ctx: &mut TraverseCtx<'a>) {
+    fn dead_code_elimination(program: &mut Program<'a>, ctx: &mut ReusableTraverseCtx<'a>) {
         PeepholeFoldConstants::new().build(program, ctx);
         PeepholeMinimizeConditions::new().build(program, ctx);
         PeepholeRemoveDeadCode::new().build(program, ctx);

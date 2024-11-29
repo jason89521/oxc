@@ -157,7 +157,7 @@ impl<'a, 'ctx> ExponentiationOperator<'a, 'ctx> {
         let reference = ctx.scoping.symbols_mut().get_reference_mut(ident.reference_id());
 
         // `left **= right` is being transformed to `left = Math.pow(left, right)`,
-        // so if `left` is no longer being read from, update its `ReferenceFlags`.
+        // so `left` in `left =` is no longer being read from
         *reference.flags_mut() = ReferenceFlags::Write;
 
         let pow_left = if let Some(symbol_id) = reference.symbol_id() {
@@ -246,7 +246,7 @@ impl<'a, 'ctx> ExponentiationOperator<'a, 'ctx> {
         // ```
         let prop_span = member_expr.property.span;
         let prop_name = member_expr.property.name.clone();
-        let prop = ctx.ast.expression_string_literal(prop_span, prop_name.clone());
+        let prop = ctx.ast.expression_string_literal(prop_span, prop_name.clone(), None);
 
         // Complete 2nd member expression
         // ```
@@ -264,7 +264,7 @@ impl<'a, 'ctx> ExponentiationOperator<'a, 'ctx> {
             AssignmentTarget::ComputedMemberExpression(ctx.ast.alloc_computed_member_expression(
                 member_expr.span,
                 ctx.ast.move_expression(&mut member_expr.object),
-                ctx.ast.expression_string_literal(prop_span, prop_name),
+                ctx.ast.expression_string_literal(prop_span, prop_name, None),
                 false,
             ));
 

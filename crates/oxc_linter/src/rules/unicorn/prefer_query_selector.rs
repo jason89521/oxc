@@ -124,7 +124,7 @@ impl Rule for PreferQuerySelector {
                     let quotes_symbol = source_text.chars().next().unwrap();
                     let sharp = if cur_property_name.eq(&"getElementById") { "#" } else { "" };
                     let span = property_span.merge(&argument_expr.span());
-                    return fixer.replace(span, format!("{preferred_selector}({quotes_symbol}{sharp}{literal_value}{quotes_symbol}"));
+                    fixer.replace(span, format!("{preferred_selector}({quotes_symbol}{sharp}{literal_value}{quotes_symbol}"))
                 });
             }
 
@@ -200,5 +200,7 @@ fn test() {
         ("document.getElementsByClassName(fn());", "document.getElementsByClassName(fn());", None),
     ];
 
-    Tester::new(PreferQuerySelector::NAME, pass, fail).expect_fix(fix).test_and_snapshot();
+    Tester::new(PreferQuerySelector::NAME, PreferQuerySelector::CATEGORY, pass, fail)
+        .expect_fix(fix)
+        .test_and_snapshot();
 }

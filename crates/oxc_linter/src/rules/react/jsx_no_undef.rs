@@ -35,7 +35,7 @@ declare_oxc_lint!(
     correctness
 );
 
-fn get_resolvable_ident<'a>(node: &'a JSXElementName<'a>) -> Option<&'a IdentifierReference> {
+fn get_resolvable_ident<'a>(node: &'a JSXElementName<'a>) -> Option<&'a IdentifierReference<'a>> {
     match node {
         JSXElementName::Identifier(_)
         | JSXElementName::NamespacedName(_)
@@ -45,7 +45,9 @@ fn get_resolvable_ident<'a>(node: &'a JSXElementName<'a>) -> Option<&'a Identifi
     }
 }
 
-fn get_member_ident<'a>(mut expr: &'a JSXMemberExpression<'a>) -> Option<&'a IdentifierReference> {
+fn get_member_ident<'a>(
+    mut expr: &'a JSXMemberExpression<'a>,
+) -> Option<&'a IdentifierReference<'a>> {
     loop {
         match &expr.object {
             JSXMemberExpressionObject::IdentifierReference(ident) => return Some(ident),
@@ -140,9 +142,9 @@ fn test() {
         ("var React; enum A { App }; React.render(<App />);", None),
     ];
 
-    Tester::new(JsxNoUndef::NAME, pass, fail).test_and_snapshot();
+    Tester::new(JsxNoUndef::NAME, JsxNoUndef::CATEGORY, pass, fail).test_and_snapshot();
 
     let pass = vec![("let x = <A.B />;", None, Some(json!({ "globals": {"A": "readonly" } })))];
     let fail = vec![("let x = <A.B />;", None, None)];
-    Tester::new(JsxNoUndef::NAME, pass, fail).test();
+    Tester::new(JsxNoUndef::NAME, JsxNoUndef::CATEGORY, pass, fail).test();
 }

@@ -61,13 +61,13 @@ impl Rule for UnicodeBom {
 
         if has_bomb && matches!(self.bom_option, BomOptionType::Never) {
             ctx.diagnostic_with_fix(unexpected_unicode_bom_diagnostic(SPAN), |fixer| {
-                return fixer.delete_range(Span::new(0, 3));
+                fixer.delete_range(Span::new(0, 3))
             });
         }
 
         if !has_bomb && matches!(self.bom_option, BomOptionType::Always) {
             ctx.diagnostic_with_fix(expected_unicode_bom_diagnostic(SPAN), |fixer| {
-                return fixer.replace(SPAN, "﻿");
+                fixer.replace(SPAN, "﻿")
             });
         }
     }
@@ -116,5 +116,7 @@ fn test() {
         ("var a = 123;", "﻿var a = 123;", Some(serde_json::json!(["always"]))),
     ];
 
-    Tester::new(UnicodeBom::NAME, pass, fail).expect_fix(fix).test_and_snapshot();
+    Tester::new(UnicodeBom::NAME, UnicodeBom::CATEGORY, pass, fail)
+        .expect_fix(fix)
+        .test_and_snapshot();
 }
