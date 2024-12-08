@@ -1,8 +1,9 @@
 commit: 54a8389f
 
-Passed: 90/101
+Passed: 95/106
 
 # All Passed:
+* babel-plugin-transform-class-properties
 * babel-plugin-transform-class-static-block
 * babel-plugin-transform-nullish-coalescing-operator
 * babel-plugin-transform-optional-catch-binding
@@ -170,7 +171,7 @@ rebuilt        : SymbolId(2): []
 x Output mismatch
 
 
-# babel-plugin-transform-react-jsx (31/34)
+# babel-plugin-transform-react-jsx (34/37)
 * refresh/does-not-transform-it-because-it-is-not-used-in-the-AST/input.jsx
 x Output mismatch
 

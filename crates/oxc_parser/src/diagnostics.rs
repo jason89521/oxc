@@ -448,6 +448,24 @@ pub fn cover_initialized_name(span: Span) -> OxcDiagnostic {
 .with_label(span)
 }
 
+#[cold]
+pub fn duplicate_export(x0: &str, span1: Span, span2: Span) -> OxcDiagnostic {
+    OxcDiagnostic::error(format!("Duplicated export '{x0}'")).with_labels([
+        span1.label("Export has already been declared here"),
+        span2.label("It cannot be redeclared here"),
+    ])
+}
+
+#[cold]
+pub fn import_meta(span: Span) -> OxcDiagnostic {
+    OxcDiagnostic::error("The only valid meta property for import is import.meta").with_label(span)
+}
+
+#[cold]
+pub fn new_target(span: Span) -> OxcDiagnostic {
+    OxcDiagnostic::error("The only valid meta property for new is new.target").with_label(span)
+}
+
 // ================================= MODIFIERS =================================
 
 #[cold]

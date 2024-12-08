@@ -9,7 +9,7 @@ use oxc_diagnostics::OxcDiagnostic;
 use oxc_macros::declare_oxc_lint;
 use oxc_span::{GetSpan, Span};
 
-use crate::{context::LintContext, fixer::Fix, rule::Rule, utils::is_same_reference, AstNode};
+use crate::{context::LintContext, fixer::Fix, rule::Rule, utils::is_same_expression, AstNode};
 
 fn prefer_negative_index_diagnostic(span: Span) -> OxcDiagnostic {
     OxcDiagnostic::warn("Prefer negative index over .length - index when possible").with_label(span)
@@ -179,7 +179,7 @@ impl Rule for PreferNegativeIndex {
 }
 
 fn is_same_node(left: &Expression, right: &Expression, ctx: &LintContext) -> bool {
-    if is_same_reference(left, right, ctx) {
+    if is_same_expression(left, right, ctx) {
         return true;
     }
 
@@ -299,8 +299,6 @@ fn test() {
         "foo.slice(foo.length - 1 / 1)",
         "[1, 2, 3].slice([1, 2, 3].length - 1)",
         "foo[bar++].slice(foo[bar++].length - 1)",
-        "foo[a + b].slice(foo[a + b].length - 1)",
-        "foo[`${bar}`].slice(foo[`${bar}`].length - 1)",
         "function foo() {return [].slice.apply(arguments);}",
         "String.prototype.toSpliced.call(foo, foo.length - 1)",
         "String.prototype.with.call(foo, foo.length - 1)",

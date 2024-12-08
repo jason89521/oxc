@@ -22,11 +22,22 @@ declare_oxc_lint!(
     ///
     /// This rule reports imports from a path containing a __mocks__ component.
     ///
+    /// ### Why is this bad?
+    ///
+    /// Manually importing mocks from a `__mocks__` directory can lead to unexpected behavior.
+    ///
     /// ### Example
-    /// ```javascript
+    ///
+    /// Examples of **incorrect** code for this rule:
+    /// ```ts
     /// import thing from './__mocks__/index';
     /// require('./__mocks__/index');
-    /// require('__mocks__');
+    /// ```
+    ///
+    /// Examples of **correct** code for this rule:
+    /// ```ts
+    /// import thing from 'thing';
+    /// require('thing');
     /// ```
     NoMocksImport,
     style
@@ -37,7 +48,7 @@ impl Rule for NoMocksImport {
         let module_records = ctx.module_record();
 
         for import_entry in &module_records.import_entries {
-            let module_specifier = import_entry.module_request.name().as_str();
+            let module_specifier = import_entry.module_request.name();
             if contains_mocks_dir(module_specifier) {
                 ctx.diagnostic(no_mocks_import_diagnostic(import_entry.module_request.span()));
             }

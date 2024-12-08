@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use oxc_diagnostics::{LabeledSpan, OxcDiagnostic};
-use oxc_macros::declare_oxc_lint;
-use oxc_semantic::ModuleRecord;
-use oxc_span::{CompactStr, Span};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{context::LintContext, rule::Rule};
+use oxc_diagnostics::{LabeledSpan, OxcDiagnostic};
+use oxc_macros::declare_oxc_lint;
+use oxc_span::{CompactStr, Span};
+
+use crate::{context::LintContext, rule::Rule, ModuleRecord};
 
 fn no_named_export(module_name: &str, span: Span) -> OxcDiagnostic {
     OxcDiagnostic::warn(format!("No named exports found in module '{module_name}'"))
@@ -56,6 +56,9 @@ impl Rule for Export {
         let mut visited = FxHashSet::default();
 
         module_record.star_export_entries.iter().for_each(|star_export_entry| {
+            if star_export_entry.is_type {
+                return;
+            }
             let mut export_names = FxHashSet::default();
 
             let Some(module_request) = &star_export_entry.module_request else {
@@ -92,12 +95,6 @@ impl Rule for Export {
                 })
                 .collect::<Vec<_>>();
 
-            for name_span in &module_record.exported_bindings_duplicated {
-                if name == name_span.name() {
-                    spans.push(name_span.span());
-                }
-            }
-
             if !spans.is_empty() {
                 spans.push(*span);
                 let labels = spans.into_iter().map(LabeledSpan::underline).collect::<Vec<_>>();
@@ -105,17 +102,6 @@ impl Rule for Export {
                 ctx.diagnostic(
                     OxcDiagnostic::warn(format!("Multiple exports of name '{name}'."))
                         .with_labels(labels),
-                );
-            }
-        }
-
-        if !module_record.export_default_duplicated.is_empty() {
-            let mut spans = module_record.export_default_duplicated.clone();
-            if let Some(span) = module_record.export_default {
-                spans.push(span);
-                let labels = spans.into_iter().map(LabeledSpan::underline).collect::<Vec<_>>();
-                ctx.diagnostic(
-                    OxcDiagnostic::warn("Multiple default exports.").with_labels(labels),
                 );
             }
         }
@@ -283,6 +269,7 @@ fn test() {
                 const Bar = 2;
                 export {Bar as default};
             "#),
+            "export type * from './export-props.js'",
         ];
         let fail = vec![
             (r#"let foo; export { foo }; export * from "./export-all""#),
@@ -355,16 +342,6 @@ fn test() {
             //     export const Foo = 'bar';
             //     export namespace Foo { }
             // "),
-            (r#"
-                // declare module "a" {
-                //     const Foo = 1;
-                //     export {Foo as default};
-                // }
-                const Bar = 2;
-                export {Bar as default};
-                const Baz = 3;
-                export {Baz as default};
-            "#),
         ];
 
         Tester::new(Export::NAME, Export::CATEGORY, pass, fail)
@@ -375,7 +352,14 @@ fn test() {
 
     {
         let pass = vec!["export * from './module'"];
-        let fail = vec![];
+        let fail = vec![
+            ("
+                const Bar = 2;
+                export {Bar as default};
+                const Baz = 3;
+                export {Baz as default};
+            "),
+        ];
         Tester::new(Export::NAME, Export::CATEGORY, pass, fail)
             .with_import_plugin(true)
             .change_rule_path("export-star-4/index.js")

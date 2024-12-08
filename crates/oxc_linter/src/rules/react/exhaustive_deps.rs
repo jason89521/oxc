@@ -238,7 +238,7 @@ impl Rule for ExhaustiveDeps {
             Argument::SpreadElement(_) => {
                 ctx.diagnostic(unknown_dependencies_diagnostic(
                     hook_name.as_str(),
-                    callback_node.span(),
+                    call_expr.callee.span(),
                 ));
                 None
             }
@@ -324,7 +324,7 @@ impl Rule for ExhaustiveDeps {
                     _ => {
                         ctx.diagnostic(unknown_dependencies_diagnostic(
                             hook_name.as_str(),
-                            callback_node.span(),
+                            call_expr.callee.span(),
                         ));
                         None
                     }
@@ -407,7 +407,10 @@ impl Rule for ExhaustiveDeps {
                         })
                     });
 
-                    if has_write_reference {
+                    if has_write_reference
+                        || get_declaration_from_reference_id(ident.reference_id(), ctx.semantic())
+                            .is_some_and(|decl| decl.scope_id() != component_scope_id)
+                    {
                         continue;
                     }
                 }
@@ -528,7 +531,7 @@ impl Rule for ExhaustiveDeps {
                     ctx.diagnostic(unnecessary_dependency_diagnostic(
                         hook_name,
                         &b.to_string(),
-                        b.span,
+                        dependencies_node.span,
                     ));
                 }
             });
@@ -541,7 +544,7 @@ impl Rule for ExhaustiveDeps {
                 ctx.diagnostic(unnecessary_dependency_diagnostic(
                     hook_name,
                     &dep.to_string(),
-                    dep.span,
+                    dependencies_node.span,
                 ));
             }
         }
@@ -550,7 +553,10 @@ impl Rule for ExhaustiveDeps {
             let Some(symbol_id) = dep.symbol_id else { continue };
 
             if dep.chain.is_empty() && is_symbol_declaration_referentially_unique(symbol_id, ctx) {
-                ctx.diagnostic(dependency_changes_on_every_render_diagnostic(hook_name, dep.span));
+                ctx.diagnostic(dependency_changes_on_every_render_diagnostic(
+                    hook_name,
+                    dependencies_node.span,
+                ));
             }
         }
     }
@@ -1032,22 +1038,30 @@ impl<'a> Visit<'a> for ExhaustiveDepsVisitor<'a, '_> {
             return;
         }
 
+        let is_parent_call_expr = self
+            .stack
+            .get(self.stack.len() - 2)
+            .is_some_and(|kind| matches!(kind, AstKind::CallExpression(_)));
+
         match analyze_property_chain(&it.object, self.semantic) {
             Ok(source) => {
                 if let Some(source) = source {
-                    let new_chain = Vec::from([it.property.name.clone()]);
-
-                    self.found_dependencies.insert(Dependency {
-                        name: source.name.clone(),
-                        reference_id: source.reference_id,
-                        span: source.span,
-                        chain: [source.chain, new_chain].concat(),
-                        symbol_id: self
-                            .semantic
-                            .symbols()
-                            .get_reference(source.reference_id)
-                            .symbol_id(),
-                    });
+                    if is_parent_call_expr {
+                        self.found_dependencies.insert(source);
+                    } else {
+                        let new_chain = Vec::from([it.property.name.clone()]);
+                        self.found_dependencies.insert(Dependency {
+                            name: source.name.clone(),
+                            reference_id: source.reference_id,
+                            span: source.span,
+                            chain: [source.chain.clone(), new_chain].concat(),
+                            symbol_id: self
+                                .semantic
+                                .symbols()
+                                .get_reference(source.reference_id)
+                                .symbol_id(),
+                        });
+                    }
                 }
 
                 let cur_skip_reporting_dependency = self.skip_reporting_dependency;
@@ -1612,16 +1626,15 @@ fn test() {
           }, []);
           return <div />;
         }",
-        // TODO: fix, this shouldn't report because `myRef` comes from props
-        // r"function useMyThing(myRef) {
-        //   useEffect(() => {
-        //     const handleMove = () => {};
-        //     myRef.current = {};
-        //     return () => {
-        //       console.log(myRef.current.toString())
-        //     };
-        //   }, [myRef]);
-        // }",
+        r"function useMyThing(myRef) {
+          useEffect(() => {
+            const handleMove = () => {};
+            myRef.current = {};
+            return () => {
+              console.log(myRef.current.toString())
+            };
+          }, [myRef]);
+        }",
         r"function MyComponent() {
           const myRef = useRef();
           useEffect(() => {
@@ -2097,6 +2110,21 @@ fn test() {
         });
     }, [options]);
 }",
+        "export function useCanvasZoomOrScroll() {
+           useEffect(() => {
+               let wheelStopTimeoutId: { current: number | undefined } = { current: undefined };
+       
+               wheelStopTimeoutId = requestAnimationFrameTimeout(() => {
+                   setLastInteraction?.(null);
+               }, 300);
+       
+               return () => {
+                   if (wheelStopTimeoutId.current !== undefined) {
+                       console.log('h1');
+                   }
+               };
+           }, []);
+        }",
     ];
 
     let fail = vec![
@@ -2631,14 +2659,14 @@ fn test() {
             }
           }, []);
         }",
-        // r"function MyComponent(props) {
-        //   const [skillsCount] = useState();
-        //   useEffect(() => {
-        //     if (skillsCount === 0 && !props.isEditMode) {
-        //       props.toggleEditMode();
-        //     }
-        //   }, [skillsCount, props.isEditMode, props.toggleEditMode]);
-        // }",
+        r"function MyComponent(props) {
+          const [skillsCount] = useState();
+          useEffect(() => {
+            if (skillsCount === 0 && !props.isEditMode) {
+              props.toggleEditMode();
+            }
+          }, [skillsCount, props.isEditMode, props.toggleEditMode]);
+        }",
         r"function MyComponent(props) {
           const [skillsCount] = useState();
           useEffect(() => {

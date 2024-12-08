@@ -1,21 +1,21 @@
 use std::ops::Add;
 
+use oxc_allocator::Vec;
 use oxc_ast::ast::*;
 use oxc_span::GetSpan;
 
-use super::assignment::AssignmentLikeNode;
 use crate::{
     array,
-    format::{assignment, Separator},
-    group, hardline, indent,
-    ir::{Doc, DocBuilder, Group, IfBreak},
-    line, softline, space, text, Format, Prettier,
+    format::{assignment, assignment::AssignmentLikeNode, JoinSeparator},
+    group, hardline, if_break, indent,
+    ir::Doc,
+    join, line, softline, text, Format, Prettier,
 };
 
 pub(super) fn print_class<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a> {
-    let mut parts = p.vec();
-    let mut heritage_clauses_parts = p.vec();
-    let mut group_parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
+    let mut heritage_clauses_parts = Vec::new_in(p.allocator);
+    let mut group_parts = Vec::new_in(p.allocator);
 
     // Keep old behaviour of extends in same line
     // If there is only on extends and there are not comments
@@ -24,7 +24,7 @@ pub(super) fn print_class<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a
     let group_mode = class.implements.as_ref().is_some_and(|v| !v.is_empty());
 
     if let Some(super_class) = &class.super_class {
-        let mut extend_parts = p.vec();
+        let mut extend_parts = Vec::new_in(p.allocator);
 
         extend_parts.push(text!("extends "));
         extend_parts.push(super_class.format(p));
@@ -33,13 +33,13 @@ pub(super) fn print_class<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a
             extend_parts.push(super_type_parameters.format(p));
         }
 
-        extend_parts.push(space!());
+        extend_parts.push(text!(" "));
 
         if group_mode {
             heritage_clauses_parts.push(softline!());
         }
 
-        heritage_clauses_parts.push(Doc::Array(extend_parts));
+        heritage_clauses_parts.push(array!(p, extend_parts));
     }
 
     heritage_clauses_parts.push(print_heritage_clauses_implements(p, class));
@@ -69,14 +69,14 @@ pub(super) fn print_class<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a
     }
 
     if class.id.is_some() || class.type_parameters.is_some() {
-        group_parts.push(space!());
+        group_parts.push(text!(" "));
     }
 
     if group_mode {
         let printend_parts_group = if should_indent_only_heritage_clauses(class) {
-            array!(p, Doc::Array(group_parts), indent!(p, Doc::Array(heritage_clauses_parts)))
+            array!(p, [array!(p, group_parts), indent!(p, heritage_clauses_parts)])
         } else {
-            indent!(p, Doc::Array(group_parts), group!(p, Doc::Array(heritage_clauses_parts)))
+            indent!(p, [array!(p, group_parts), group!(p, heritage_clauses_parts)])
         };
 
         parts.push(printend_parts_group);
@@ -85,15 +85,15 @@ pub(super) fn print_class<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a
             parts.extend(hardline!());
         }
     } else {
-        parts.push(array!(p, Doc::Array(group_parts), Doc::Array(heritage_clauses_parts)));
+        parts.push(array!(p, [array!(p, group_parts), array!(p, heritage_clauses_parts)]));
     }
 
     parts.push(class.body.format(p));
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 pub(super) fn print_class_body<'a>(p: &mut Prettier<'a>, class_body: &ClassBody<'a>) -> Doc<'a> {
-    let mut parts_inner = p.vec();
+    let mut parts_inner = Vec::new_in(p.allocator);
 
     for (i, node) in class_body.body.iter().enumerate() {
         parts_inner.push(node.format(p));
@@ -116,22 +116,22 @@ pub(super) fn print_class_body<'a>(p: &mut Prettier<'a>, class_body: &ClassBody<
 
     // TODO: if there are any dangling comments, print them
 
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     parts.push(text!("{"));
     if !parts_inner.is_empty() {
         let indent = {
-            let mut parts = p.vec();
+            let mut parts = Vec::new_in(p.allocator);
             parts.extend(hardline!());
-            parts.push(Doc::Array(parts_inner));
-            Doc::Indent(parts)
+            parts.push(array!(p, parts_inner));
+            indent!(p, parts)
         };
-        parts.push(array![p, indent]);
+        parts.push(array!(p, [indent]));
         parts.extend(hardline!());
     }
 
     parts.push(text!("}"));
 
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 #[derive(Debug)]
@@ -247,7 +247,7 @@ pub(super) fn print_class_property<'a>(
     p: &mut Prettier<'a>,
     node: &ClassMemberish<'a, '_>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if let Some(decarators) = node.decorators() {
         for decorator in decarators {
@@ -259,7 +259,7 @@ pub(super) fn print_class_property<'a>(
 
     if let Some(accessibility) = node.format_accessibility(p) {
         parts.push(accessibility);
-        parts.push(space!());
+        parts.push(text!(" "));
     }
 
     if node.is_declare() {
@@ -301,13 +301,13 @@ pub(super) fn print_class_property<'a>(
         ClassMemberish::AccessorProperty(v) => AssignmentLikeNode::AccessorProperty(v),
     };
     let mut result =
-        assignment::print_assignment(p, node, Doc::Array(parts), text!(" ="), right_expr);
+        assignment::print_assignment(p, node, array!(p, parts), text!(" ="), right_expr);
 
     if p.options.semi {
-        let mut parts = p.vec();
+        let mut parts = Vec::new_in(p.allocator);
         parts.push(result);
         parts.push(text!(";"));
-        result = Doc::Array(parts);
+        result = array!(p, parts);
     }
     result
 }
@@ -376,24 +376,20 @@ fn should_print_semicolon_after_class_property<'a>(
  * @link <https://github.com/prettier/prettier/blob/aa3853b7765645b3f3d8a76e41cf6d70b93c01fd/src/language-js/print/class.js#L148>
  */
 fn print_heritage_clauses_implements<'a>(p: &mut Prettier<'a>, class: &Class<'a>) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if class.implements.is_none() {
-        return Doc::Array(parts);
+        return array!(p, parts);
     }
 
     let implements = class.implements.as_ref().unwrap();
 
     if implements.len() == 0 {
-        return Doc::Array(parts);
+        return array!(p, parts);
     }
 
     if should_indent_only_heritage_clauses(class) {
-        parts.push(Doc::IfBreak(IfBreak {
-            flat_content: p.boxed(text!("")),
-            break_contents: p.boxed(line!()),
-            group_id: None, // ToDo - how to attach group id
-        }));
+        parts.push(if_break!(p, line!()));
     } else if class.super_class.is_some() {
         parts.extend(hardline!());
     } else {
@@ -402,15 +398,15 @@ fn print_heritage_clauses_implements<'a>(p: &mut Prettier<'a>, class: &Class<'a>
 
     parts.push(text!("implements "));
 
-    let implements_docs = implements.iter().map(|v| v.format(p)).collect();
+    let implements_docs = implements.iter().map(|v| v.format(p)).collect::<std::vec::Vec<_>>();
 
     parts.push(indent!(
         p,
-        group!(p, softline!(), Doc::Array(p.join(Separator::CommaLine, implements_docs)))
+        [group!(p, [softline!(), join!(p, JoinSeparator::CommaLine, implements_docs),])]
     ));
-    parts.push(space!());
+    parts.push(text!(" "));
 
-    Doc::Group(Group::new(parts))
+    group!(p, parts)
 }
 
 fn should_indent_only_heritage_clauses(class: &Class) -> bool {

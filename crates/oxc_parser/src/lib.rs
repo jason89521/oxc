@@ -69,6 +69,7 @@
 mod context;
 mod cursor;
 mod modifiers;
+mod module_record;
 mod state;
 
 mod js;
@@ -84,7 +85,6 @@ mod lexer;
 #[doc(hidden)]
 pub mod lexer;
 
-use context::{Context, StatementContext};
 use oxc_allocator::{Allocator, Box as ArenaBox};
 use oxc_ast::{
     ast::{Expression, Program},
@@ -92,9 +92,12 @@ use oxc_ast::{
 };
 use oxc_diagnostics::{OxcDiagnostic, Result};
 use oxc_span::{ModuleKind, SourceType, Span};
+use oxc_syntax::module_record::ModuleRecord;
 
 use crate::{
+    context::{Context, StatementContext},
     lexer::{Kind, Lexer, Token},
+    module_record::ModuleRecordBuilder,
     state::ParserState,
 };
 
@@ -149,6 +152,9 @@ pub struct ParserReturn<'a> {
     /// To ensure a valid AST, check that [`errors`](ParserReturn::errors) is empty. Then, run
     /// semantic analysis with syntax error checking enabled.
     pub program: Program<'a>,
+
+    /// See <https://tc39.es/ecma262/#sec-abstract-module-records>
+    pub module_record: ModuleRecord<'a>,
 
     /// Syntax errors encountered while parsing.
     ///
@@ -409,6 +415,9 @@ struct ParserImpl<'a> {
     /// Ast builder for creating AST nodes
     ast: AstBuilder<'a>,
 
+    /// Module Record Builder
+    module_record_builder: ModuleRecordBuilder<'a>,
+
     /// Precomputed typescript detection
     is_ts: bool,
 }
@@ -437,6 +446,7 @@ impl<'a> ParserImpl<'a> {
             state: ParserState::default(),
             ctx: Self::default_context(source_type, options),
             ast: AstBuilder::new(allocator),
+            module_record_builder: ModuleRecordBuilder::new(allocator),
             is_ts: source_type.is_typescript(),
         }
     }
@@ -447,7 +457,7 @@ impl<'a> ParserImpl<'a> {
     /// Recoverable errors are stored inside `errors`.
     #[inline]
     pub fn parse(mut self) -> ParserReturn<'a> {
-        let (program, panicked) = match self.parse_program() {
+        let (mut program, panicked) = match self.parse_program() {
             Ok(program) => (program, false),
             Err(error) => {
                 self.error(self.overlong_error().unwrap_or(error));
@@ -474,14 +484,36 @@ impl<'a> ParserImpl<'a> {
                 errors.push(error);
             }
         }
+        let (module_record, module_record_errors) = self.module_record_builder.build();
         if errors.len() != 1 {
             errors.reserve(self.lexer.errors.len() + self.errors.len());
             errors.extend(self.lexer.errors);
             errors.extend(self.errors);
+            // Skip checking for exports in TypeScript {
+            if !self.source_type.is_typescript() {
+                errors.extend(module_record_errors);
+            }
         }
         let irregular_whitespaces =
             self.lexer.trivia_builder.irregular_whitespaces.into_boxed_slice();
-        ParserReturn { program, errors, irregular_whitespaces, panicked, is_flow_language }
+
+        let source_type = program.source_type;
+        if source_type.is_unambiguous() {
+            program.source_type = if module_record.has_module_syntax {
+                source_type.with_module(true)
+            } else {
+                source_type.with_script(true)
+            };
+        }
+
+        ParserReturn {
+            program,
+            module_record,
+            errors,
+            irregular_whitespaces,
+            panicked,
+            is_flow_language,
+        }
     }
 
     pub fn parse_expression(mut self) -> std::result::Result<Expression<'a>, Vec<OxcDiagnostic>> {
@@ -504,8 +536,6 @@ impl<'a> ParserImpl<'a> {
         let hashbang = self.parse_hashbang();
         let (directives, statements) =
             self.parse_directives_and_statements(/* is_top_level */ true)?;
-
-        self.set_source_type_to_script_if_unambiguous();
 
         let span = Span::new(0, self.source_text.len() as u32);
         let comments = self.ast.vec_from_iter(self.lexer.trivia_builder.comments.iter().copied());
@@ -586,18 +616,6 @@ impl<'a> ParserImpl<'a> {
 
     fn errors_count(&self) -> usize {
         self.errors.len() + self.lexer.errors.len()
-    }
-
-    fn set_source_type_to_module_if_unambiguous(&mut self) {
-        if self.source_type.is_unambiguous() {
-            self.source_type = self.source_type.with_module(true);
-        }
-    }
-
-    fn set_source_type_to_script_if_unambiguous(&mut self) {
-        if self.source_type.is_unambiguous() {
-            self.source_type = self.source_type.with_script(true);
-        }
     }
 
     #[inline]

@@ -9,104 +9,110 @@ export interface Comment {
   end: number
 }
 
-export interface ModuleLexer {
-  imports: Array<ModuleLexerImportSpecifier>
-  exports: Array<ModuleLexerExportSpecifier>
+export interface EcmaScriptModule {
   /**
-   * ESM syntax detection
+   * Has ESM syntax.
    *
-   * The use of ESM syntax: import / export statements and `import.meta`
+   * i.e. `import` and `export` statements, and `import.meta`.
+   *
+   * Dynamic imports `import('foo')` are ignored since they can be used in non-ESM files.
    */
   hasModuleSyntax: boolean
-  /** Facade modules that only use import / export syntax */
-  facade: boolean
+  /** Import Statements. */
+  staticImports: Array<StaticImport>
+  /** Export Statements. */
+  staticExports: Array<StaticExport>
+  /** Span positions` of `import.meta` */
+  importMetas: Array<Span>
+}
+
+export interface ExportExportName {
+  kind: ExportExportNameKind
+  name?: string
+  start?: number
+  end?: number
+}
+
+export declare const enum ExportExportNameKind {
+  /** `export { name } */
+  Name = 'Name',
+  /** `export default expression` */
+  Default = 'Default',
+  /** `export * from "mod" */
+  None = 'None'
+}
+
+export interface ExportImportName {
+  kind: ExportImportNameKind
+  name?: string
+  start?: number
+  end?: number
+}
+
+export declare const enum ExportImportNameKind {
+  /** `export { name } */
+  Name = 'Name',
+  /** `export * as ns from "mod"` */
+  All = 'All',
+  /** `export * from "mod"` */
+  AllButDefault = 'AllButDefault',
+  /** Does not have a specifier. */
+  None = 'None'
+}
+
+export interface ExportLocalName {
+  kind: ExportLocalNameKind
+  name?: string
+  start?: number
+  end?: number
+}
+
+export declare const enum ExportLocalNameKind {
+  /** `export { name } */
+  Name = 'Name',
+  /** `export default expression` */
+  Default = 'Default',
+  /**
+   * If the exported value is not locally accessible from within the module.
+   * `export default function () {}`
+   */
+  None = 'None'
+}
+
+export interface ImportName {
+  kind: ImportNameKind
+  name?: string
+  start?: number
+  end?: number
+}
+
+export declare const enum ImportNameKind {
+  /** `import { x } from "mod"` */
+  Name = 'Name',
+  /** `import * as ns from "mod"` */
+  NamespaceObject = 'NamespaceObject',
+  /** `import defaultExport from "mod"` */
+  Default = 'Default'
 }
 
 /**
- * # Panics
+ * Parse asynchronously.
  *
- * * Tokio crashes
+ * Note: This function can be slower than `parseSync` due to the overhead of spawning a thread.
  */
-export declare function moduleLexerAsync(sourceText: string, options?: ParserOptions | undefined | null): Promise<ModuleLexer>
-
-export interface ModuleLexerExportSpecifier {
-  /** Exported name */
-  n: string
-  /** Local name, or undefined. */
-  ln?: string
-  /** Start of exported name */
-  s: number
-  /** End of exported name */
-  e: number
-  /** Start of local name */
-  ls?: number
-  /** End of local name */
-  le?: number
-}
-
-export interface ModuleLexerImportSpecifier {
-  /**
-   * Module name
-   *
-   * To handle escape sequences in specifier strings, the .n field of imported specifiers will be provided where possible.
-   *
-   * For dynamic import expressions, this field will be empty if not a valid JS string.
-   */
-  n?: string
-  /** Start of module specifier */
-  s: number
-  /** End of module specifier */
-  e: number
-  /** Start of import statement */
-  ss: number
-  /** End of import statement */
-  se: number
-  /**
-   * Import Type
-   * * If this import keyword is a dynamic import, this is the start value.
-   * * If this import keyword is a static import, this is -1.
-   * * If this import keyword is an import.meta expression, this is -2.
-   * * If this import is an `export *`, this is -3.
-   */
-  d: number
-  /**
-   * If this import has an import assertion, this is the start value
-   * Otherwise this is `-1`.
-   */
-  a: number
-}
-
-/**
- * Outputs the list of exports and locations of import specifiers,
- * including dynamic import and import meta handling.
- *
- * # Panics
- *
- * * File extension is invalid
- */
-export declare function moduleLexerSync(sourceText: string, options?: ParserOptions | undefined | null): ModuleLexer
-
-/**
- * # Panics
- *
- * * Tokio crashes
- */
-export declare function parseAsync(sourceText: string, options?: ParserOptions | undefined | null): Promise<ParseResult>
+export declare function parseAsync(filename: string, sourceText: string, options?: ParserOptions | undefined | null): Promise<ParseResult>
 
 export interface ParseResult {
   program: import("@oxc-project/types").Program
+  module: EcmaScriptModule
   comments: Array<Comment>
   errors: Array<string>
 }
 
-/**
- * Babel Parser Options
- *
- * <https://github.com/babel/babel/blob/v7.26.2/packages/babel-parser/typings/babel-parser.d.ts>
- */
 export interface ParserOptions {
   sourceType?: 'script' | 'module' | 'unambiguous' | undefined
-  sourceFilename?: string
+  /** Treat the source text as `js`, `jsx`, `ts`, or `tsx`. */
+  lang?: 'js' | 'jsx' | 'ts' | 'tsx'
   /**
    * Emit `ParenthesizedExpression` in AST.
    *
@@ -119,22 +125,98 @@ export interface ParserOptions {
   preserveParens?: boolean
 }
 
-/**
- * # Panics
- *
- * * File extension is invalid
- * * Serde JSON serialization
- */
-export declare function parseSync(sourceText: string, options?: ParserOptions | undefined | null): ParseResult
+/** Parse synchronously. */
+export declare function parseSync(filename: string, sourceText: string, options?: ParserOptions | undefined | null): ParseResult
 
 /**
  * Parse without returning anything.
+ *
  * This is for benchmark purposes such as measuring napi communication overhead.
- *
- * # Panics
- *
- * * File extension is invalid
- * * Serde JSON serialization
  */
-export declare function parseWithoutReturn(sourceText: string, options?: ParserOptions | undefined | null): void
+export declare function parseWithoutReturn(filename: string, sourceText: string, options?: ParserOptions | undefined | null): void
+
+export interface Span {
+  start: number
+  end: number
+}
+
+export interface StaticExport {
+  start: number
+  end: number
+  entries: Array<StaticExportEntry>
+}
+
+export interface StaticExportEntry {
+  start: number
+  end: number
+  moduleRequest?: ValueSpan
+  /** The name under which the desired binding is exported by the module`. */
+  importName: ExportImportName
+  /** The name used to export this binding by this module. */
+  exportName: ExportExportName
+  /** The name that is used to locally access the exported value from within the importing module. */
+  localName: ExportLocalName
+}
+
+export interface StaticImport {
+  /** Start of import statement. */
+  start: number
+  /** End of import statement. */
+  end: number
+  /**
+   * Import source.
+   *
+   * ```js
+   * import { foo } from "mod";
+   * //                   ^^^
+   * ```
+   */
+  moduleRequest: ValueSpan
+  /**
+   * Import specifiers.
+   *
+   * Empty for `import "mod"`.
+   */
+  entries: Array<StaticImportEntry>
+}
+
+export interface StaticImportEntry {
+  /**
+   * The name under which the desired binding is exported by the module.
+   *
+   * ```js
+   * import { foo } from "mod";
+   * //       ^^^
+   * import { foo as bar } from "mod";
+   * //       ^^^
+   * ```
+   */
+  importName: ImportName
+  /**
+   * The name that is used to locally access the imported value from within the importing module.
+   * ```js
+   * import { foo } from "mod";
+   * //       ^^^
+   * import { foo as bar } from "mod";
+   * //              ^^^
+   * ```
+   */
+  localName: ValueSpan
+  /**
+   * Whether this binding is for a TypeScript type-only import.
+   *
+   * `true` for the following imports:
+   * ```ts
+   * import type { foo } from "mod";
+   * import { type foo } from "mod";
+   * ```
+   */
+  isType: boolean
+}
+
+export interface ValueSpan {
+  value: string
+  start: number
+  end: number
+}
 

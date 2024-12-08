@@ -4,10 +4,13 @@ use itertools::Itertools;
 use oxc_diagnostics::{LabeledSpan, OxcDiagnostic};
 use oxc_macros::declare_oxc_lint;
 use oxc_span::Span;
-use oxc_syntax::module_record::{ImportImportName, RequestedModule};
 use rustc_hash::FxHashMap;
 
-use crate::{context::LintContext, rule::Rule};
+use crate::{
+    context::LintContext,
+    module_record::{ImportImportName, RequestedModule},
+    rule::Rule,
+};
 
 fn no_duplicates_diagnostic<I>(
     module_name: &str,
@@ -104,7 +107,7 @@ impl Rule for NoDuplicates {
             let requested_modules = group
                 .into_iter()
                 .flat_map(|(_path, requested_modules)| requested_modules)
-                .filter(|requested_module| requested_module.is_import());
+                .filter(|requested_module| requested_module.is_import);
             // When prefer_inline is false, 0 is value, 1 is type named, 2 is type namespace and 3 is type default
             // When prefer_inline is true, 0 is value and type named, 2 is type // namespace and 3 is type default
             let mut import_entries_maps: FxHashMap<u8, Vec<&RequestedModule>> =
@@ -113,7 +116,7 @@ impl Rule for NoDuplicates {
                 let imports = module_record
                     .import_entries
                     .iter()
-                    .filter(|entry| entry.module_request.span() == requested_module.span())
+                    .filter(|entry| entry.module_request.span() == requested_module.span)
                     .collect::<Vec<_>>();
                 if imports.is_empty() {
                     import_entries_maps.entry(0).or_default().push(requested_module);
@@ -151,7 +154,7 @@ impl Rule for NoDuplicates {
 fn check_duplicates(ctx: &LintContext, requested_modules: Option<&Vec<&RequestedModule>>) {
     if let Some(requested_modules) = requested_modules {
         if requested_modules.len() > 1 {
-            let mut labels = requested_modules.iter().map(|m| m.span());
+            let mut labels = requested_modules.iter().map(|m| m.span);
             let first = labels.next().unwrap(); // we know there is at least one
             let module_name = ctx.source_range(first).trim_matches('\'').trim_matches('"');
             ctx.diagnostic(no_duplicates_diagnostic(module_name, first, labels));

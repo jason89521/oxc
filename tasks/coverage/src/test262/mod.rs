@@ -104,12 +104,10 @@ impl Case for Test262Case {
     }
 
     fn skip_test_case(&self) -> bool {
-        [
-            // stage 3 https://github.com/tc39/proposal-source-phase-imports
-            "source-phase-imports",
-        ]
-        .iter()
-        .any(|feature| self.meta.features.iter().any(|f| **f == **feature))
+        false
+        // []
+        // .iter()
+        // .any(|feature| self.meta.features.iter().any(|f| **f == **feature))
     }
 
     // Unless configured otherwise (via the noStrict, onlyStrict, module, or raw flags),

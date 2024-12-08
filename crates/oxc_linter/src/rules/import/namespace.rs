@@ -6,11 +6,14 @@ use oxc_ast::{
 };
 use oxc_diagnostics::OxcDiagnostic;
 use oxc_macros::declare_oxc_lint;
-use oxc_semantic::{AstNode, ModuleRecord};
+use oxc_semantic::AstNode;
 use oxc_span::{GetSpan, Span};
-use oxc_syntax::module_record::{ExportExportName, ExportImportName, ImportImportName};
 
-use crate::{context::LintContext, rule::Rule};
+use crate::{
+    context::LintContext,
+    module_record::{ExportExportName, ExportImportName, ImportImportName, ModuleRecord},
+    rule::Rule,
+};
 
 fn no_export(span: Span, specifier_name: &str, namespace_name: &str) -> OxcDiagnostic {
     OxcDiagnostic::warn(format!(
@@ -115,7 +118,12 @@ impl Rule for Namespace {
 
     fn run_once(&self, ctx: &LintContext<'_>) {
         let module_record = ctx.module_record();
-        module_record.import_entries.iter().for_each(|entry| {
+
+        if !module_record.has_module_syntax {
+            return;
+        }
+
+        for entry in &module_record.import_entries {
             let (source, module) = match &entry.import_name {
                 ImportImportName::NamespaceObject => {
                     let source = entry.module_request.name();
@@ -148,12 +156,11 @@ impl Rule for Namespace {
                 }
             };
 
-            if module.not_esm {
+            if !module.has_module_syntax {
                 return;
             }
 
-            let Some(symbol_id) = ctx.scopes().get_root_binding(entry.local_name.name().as_str())
-            else {
+            let Some(symbol_id) = ctx.scopes().get_root_binding(entry.local_name.name()) else {
                 return;
             };
 
@@ -211,7 +218,7 @@ impl Rule for Namespace {
                     }
                 }
             });
-        });
+        }
     }
 }
 
@@ -232,16 +239,15 @@ fn get_module_request_name(name: &str, module_record: &ModuleRecord) -> Option<S
         module_record.indirect_export_entries.iter().find(|e| match &e.import_name {
             ExportImportName::All => {
                 if let ExportExportName::Name(name_span) = &e.export_name {
-                    return name_span.name().as_str() == name;
+                    return name_span.name() == name;
                 }
 
                 false
             }
             ExportImportName::Name(name_span) => {
-                name_span.name().as_str() == name
+                name_span.name() == name
                     && module_record.import_entries.iter().any(|entry| {
-                        entry.local_name.name().as_str() == name
-                            && entry.import_name.is_namespace_object()
+                        entry.local_name.name() == name && entry.import_name.is_namespace_object()
                     })
             }
             _ => false,
@@ -253,9 +259,7 @@ fn get_module_request_name(name: &str, module_record: &ModuleRecord) -> Option<S
     module_record
         .import_entries
         .iter()
-        .find(|entry| {
-            entry.local_name.name().as_str() == name && entry.import_name.is_namespace_object()
-        })
+        .find(|entry| entry.local_name.name() == name && entry.import_name.is_namespace_object())
         .map(|entry| entry.module_request.name().to_string())
 }
 

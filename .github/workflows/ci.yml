@@ -32,7 +32,7 @@ jobs:
         include:
           # - os: windows-latest # See `test-windows` job below
           - os: ubuntu-latest
-          - os: macos-14
+          - os: macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: taiki-e/checkout-action@v1
@@ -47,8 +47,8 @@ jobs:
       - run: git diff --exit-code # Must commit everything
 
   test-windows:
-    if: false
     name: Test (windows-latest)
+    if: ${{ github.ref_name == 'main' }}
     runs-on: windows-latest
     steps:
       - uses: taiki-e/checkout-action@v1
@@ -94,7 +94,7 @@ jobs:
         shell: bash
         run: |
           # cargo ck # no need to check because it's already checked in linux
-          cargo test
+          cargo test --workspace
 
   test-wasm32-wasip1-threads:
     name: Test wasm32-wasip1-threads
@@ -104,7 +104,7 @@ jobs:
       RUSTFLAGS: "--cfg tokio_unstable -C target-feature=+atomics,+bulk-memory,+mutable-globals,+simd128 -C link-args=--max-memory=67108864"
       CARGO_TARGET_WASM32_WASIP1_THREADS_RUNNER: "wasmtime run -W bulk-memory=y -W threads=y -S threads=y --dir=${{ github.workspace }}::${{ github.workspace }} --"
       # Insta is not able to run on wasmtime, omit the packages that depend on it
-      TEST_FLAGS: "-p oxc_ast -p oxc_cfg -p oxc_regular_expression -p oxc_module_lexer -- --nocapture"
+      TEST_FLAGS: "-p oxc_ast -p oxc_cfg -p oxc_regular_expression -- --nocapture"
     steps:
       - uses: taiki-e/checkout-action@v1
       - uses: Boshen/setup-rust@main
@@ -135,9 +135,7 @@ jobs:
 
       - run: just build-wasm debug
       - working-directory: npm/oxc-wasm
-        run: |
-          sed -i ${{ (runner.os == 'macOS' && '""') || '' }} -e 's/=> Array;/=> number[];/g' oxc_wasm.d.ts
-          pnpm run check
+        run: pnpm run check
 
       - working-directory: wasm/parser
         run: pnpm run build
@@ -149,31 +147,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: taiki-e/checkout-action@v1
-      - uses: crate-ci/typos@v1.27.3
+      - uses: crate-ci/typos@v1.28.2
         with:
           files: .
-
-  deny:
-    name: Cargo Deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: taiki-e/checkout-action@v1
-
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            src:
-              - 'Cargo.lock'
-
-      - uses: Boshen/setup-rust@main
-        if: steps.filter.outputs.src == 'true'
-        with:
-          restore-cache: false
-          tools: cargo-deny
-
-      - if: steps.filter.outputs.src == 'true'
-        run: cargo deny check
 
   lint:
     name: Clippy
@@ -309,11 +285,12 @@ jobs:
       - uses: Boshen/setup-rust@main
         if: steps.filter.outputs.src == 'true'
         with:
-          save-cache: ${{ github.ref_name == 'main' }}
           cache-key: warm
       - uses: ./.github/actions/pnpm
         if: steps.filter.outputs.src == 'true'
-      - run: pnpm run build
+      - run: pnpm run build-dev
         if: steps.filter.outputs.src == 'true'
       - run: pnpm run test
+        if: steps.filter.outputs.src == 'true'
+      - run: git diff --exit-code # Must commit everything
         if: steps.filter.outputs.src == 'true'

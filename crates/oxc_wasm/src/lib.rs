@@ -7,6 +7,7 @@ use std::{
     cell::{Cell, RefCell},
     path::{Path, PathBuf},
     rc::Rc,
+    sync::Arc,
 };
 
 use oxc::{
@@ -23,7 +24,7 @@ use oxc::{
     transformer::{TransformOptions, Transformer},
 };
 use oxc_index::Idx;
-use oxc_linter::Linter;
+use oxc_linter::{Linter, ModuleRecord};
 use oxc_prettier::{Prettier, PrettierOptions};
 use serde::Serialize;
 use tsify::Tsify;
@@ -198,7 +199,7 @@ impl Oxc {
                 .preserve_parens
                 .unwrap_or(default_parser_options.preserve_parens),
         };
-        let ParserReturn { mut program, errors, .. } =
+        let ParserReturn { mut program, errors, module_record, .. } =
             Parser::new(&allocator, source_text, source_type)
                 .with_options(oxc_parser_options)
                 .parse();
@@ -212,15 +213,13 @@ impl Oxc {
             // Estimate transformer will triple scopes, symbols, references
             semantic_builder = semantic_builder.with_excess_capacity(2.0);
         }
-        let semantic_ret = semantic_builder
-            .with_check_syntax_error(true)
-            .with_cfg(true)
-            .build_module_record(&path, &program)
-            .build(&program);
+        let semantic_ret =
+            semantic_builder.with_check_syntax_error(true).with_cfg(true).build(&program);
+        let semantic = semantic_ret.semantic;
 
-        self.control_flow_graph = semantic_ret.semantic.cfg().map_or_else(String::default, |cfg| {
+        self.control_flow_graph = semantic.cfg().map_or_else(String::default, |cfg| {
             cfg.debug_dot(DebugDotContext::new(
-                semantic_ret.semantic.nodes(),
+                semantic.nodes(),
                 control_flow_options.verbose.unwrap_or_default(),
             ))
         });
@@ -230,11 +229,12 @@ impl Oxc {
             );
         }
 
-        self.run_linter(&run_options, &path, &program);
+        let module_record = Arc::new(ModuleRecord::new(&path, &module_record, &semantic));
+        self.run_linter(&run_options, &path, &program, &module_record);
 
         self.run_prettier(&run_options, source_text, source_type);
 
-        let (symbols, scopes) = semantic_ret.semantic.into_symbol_table_and_scope_tree();
+        let (symbols, scopes) = semantic.into_symbol_table_and_scope_tree();
 
         if !source_type.is_typescript_definition() {
             if run_options.scope.unwrap_or_default() {
@@ -299,15 +299,19 @@ impl Oxc {
         Ok(())
     }
 
-    fn run_linter(&mut self, run_options: &OxcRunOptions, path: &Path, program: &Program) {
+    fn run_linter(
+        &mut self,
+        run_options: &OxcRunOptions,
+        path: &Path,
+        program: &Program,
+        module_record: &Arc<ModuleRecord>,
+    ) {
         // Only lint if there are no syntax errors
         if run_options.lint.unwrap_or_default() && self.diagnostics.borrow().is_empty() {
-            let semantic_ret = SemanticBuilder::new()
-                .with_cfg(true)
-                .build_module_record(path, program)
-                .build(program);
+            let semantic_ret = SemanticBuilder::new().with_cfg(true).build(program);
             let semantic = Rc::new(semantic_ret.semantic);
-            let linter_ret = Linter::default().run(path, Rc::clone(&semantic));
+            let linter_ret =
+                Linter::default().run(path, Rc::clone(&semantic), Arc::clone(module_record));
             let diagnostics = linter_ret.into_iter().map(|e| e.error).collect();
             self.save_diagnostics(diagnostics);
         }

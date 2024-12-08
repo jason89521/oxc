@@ -1,10 +1,7 @@
+use oxc_allocator::Vec;
 use oxc_ast::ast::*;
 
-use crate::{
-    format::Format,
-    ir::{Doc, DocBuilder},
-    text, Prettier,
-};
+use crate::{array, format::Format, ir::Doc, text, Prettier};
 
 #[allow(clippy::enum_variant_names)]
 pub enum TemplateLiteralPrinter<'a, 'b> {
@@ -36,7 +33,7 @@ pub(super) fn print_template_literal<'a, 'b>(
     p: &mut Prettier<'a>,
     template_literal: &'b TemplateLiteralPrinter<'a, 'b>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     parts.push(text!("`"));
 
     for (index, quais) in template_literal.quasis().iter().enumerate() {
@@ -52,5 +49,5 @@ pub(super) fn print_template_literal<'a, 'b>(
 
     parts.push(text!("`"));
 
-    Doc::Array(parts)
+    array!(p, parts)
 }

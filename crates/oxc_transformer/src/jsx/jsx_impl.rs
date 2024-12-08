@@ -312,10 +312,20 @@ fn get_import_source(jsx_runtime_importer: &str, react_importer_len: u32) -> Ato
     Atom::from(&jsx_runtime_importer[..react_importer_len as usize])
 }
 
-/// Pragma used in classic mode
-struct Pragma<'a> {
-    object: Atom<'a>,
-    property: Option<Atom<'a>>,
+/// Pragma used in classic mode.
+///
+/// `Double` is first as it's most common.
+enum Pragma<'a> {
+    /// `React.createElement`
+    Double(Atom<'a>, Atom<'a>),
+    /// `createElement`
+    Single(Atom<'a>),
+    /// `foo.bar.qux`
+    Multiple(Vec<Atom<'a>>),
+    /// `this`, `this.foo`, `this.foo.bar.qux`
+    This(Vec<Atom<'a>>),
+    /// `import.meta`, `import.meta.foo`, `import.meta.foo.bar.qux`
+    ImportMeta(Vec<Atom<'a>>),
 }
 
 impl<'a> Pragma<'a> {
@@ -323,52 +333,76 @@ impl<'a> Pragma<'a> {
     ///
     /// If provided option is invalid, raise an error and use default.
     fn parse(
-        pragma: Option<&String>,
+        pragma: Option<&str>,
         default_property_name: &'static str,
         ast: AstBuilder<'a>,
         ctx: &TransformCtx<'a>,
     ) -> Self {
         if let Some(pragma) = pragma {
-            let mut parts = pragma.split('.');
-
-            let object_name = parts.next().unwrap();
-            if object_name.is_empty() {
-                return Self::invalid(default_property_name, ctx);
+            if pragma.is_empty() {
+                ctx.error(diagnostics::invalid_pragma());
+            } else {
+                return Self::parse_impl(pragma, ast);
             }
-
-            let property = match parts.next() {
-                Some(property_name) => {
-                    if property_name.is_empty() || parts.next().is_some() {
-                        return Self::invalid(default_property_name, ctx);
-                    }
-                    Some(ast.atom(property_name))
-                }
-                None => None,
-            };
-
-            let object = ast.atom(object_name);
-            Self { object, property }
-        } else {
-            Self::default(default_property_name)
         }
+
+        Self::Double(Atom::from("React"), Atom::from(default_property_name))
     }
 
-    fn invalid(default_property_name: &'static str, ctx: &TransformCtx<'a>) -> Self {
-        ctx.error(diagnostics::invalid_pragma());
-        Self::default(default_property_name)
-    }
+    fn parse_impl(pragma: &str, ast: AstBuilder<'a>) -> Self {
+        let strs_to_atoms = |parts: &[&str]| parts.iter().map(|part| ast.atom(part)).collect();
 
-    fn default(default_property_name: &'static str) -> Self {
-        Self { object: Atom::from("React"), property: Some(Atom::from(default_property_name)) }
+        let parts = pragma.split('.').collect::<Vec<_>>();
+        match &parts[..] {
+            [] => unreachable!(),
+            ["this", rest @ ..] => Self::This(strs_to_atoms(rest)),
+            ["import", "meta", rest @ ..] => Self::ImportMeta(strs_to_atoms(rest)),
+            [first, second] => Self::Double(ast.atom(first), ast.atom(second)),
+            [only] => Self::Single(ast.atom(only)),
+            parts => Self::Multiple(strs_to_atoms(parts)),
+        }
     }
 
     fn create_expression(&self, ctx: &mut TraverseCtx<'a>) -> Expression<'a> {
-        let object = get_read_identifier_reference(SPAN, self.object.clone(), ctx);
-        if let Some(property) = self.property.as_ref() {
-            create_static_member_expression(object, property.clone(), ctx)
-        } else {
-            Expression::Identifier(ctx.alloc(object))
+        let (object, parts) = match self {
+            Self::Double(first, second) => {
+                let object = get_read_identifier_reference(SPAN, first.clone(), ctx);
+                return Expression::from(ctx.ast.member_expression_static(
+                    SPAN,
+                    object,
+                    ctx.ast.identifier_name(SPAN, second.clone()),
+                    false,
+                ));
+            }
+            Self::Single(single) => {
+                return get_read_identifier_reference(SPAN, single.clone(), ctx);
+            }
+            Self::Multiple(parts) => {
+                let mut parts = parts.iter();
+                let first = parts.next().unwrap().clone();
+                let object = get_read_identifier_reference(SPAN, first, ctx);
+                (object, parts)
+            }
+            Self::This(parts) => {
+                let object = ctx.ast.expression_this(SPAN);
+                (object, parts.iter())
+            }
+            Self::ImportMeta(parts) => {
+                let object = ctx.ast.expression_meta_property(
+                    SPAN,
+                    ctx.ast.identifier_name(SPAN, Atom::from("import")),
+                    ctx.ast.identifier_name(SPAN, Atom::from("meta")),
+                );
+                (object, parts.iter())
+            }
+        };
+
+        let mut expr = object;
+        for item in parts {
+            let name = ctx.ast.identifier_name(SPAN, item.clone());
+            expr = ctx.ast.member_expression_static(SPAN, expr, name, false).into();
         }
+        expr
     }
 }
 
@@ -384,8 +418,9 @@ impl<'a, 'ctx> JsxImpl<'a, 'ctx> {
                 if options.import_source.is_some() {
                     ctx.error(diagnostics::import_source_cannot_be_set());
                 }
-                let pragma = Pragma::parse(options.pragma.as_ref(), "createElement", ast, ctx);
-                let pragma_frag = Pragma::parse(options.pragma_frag.as_ref(), "Fragment", ast, ctx);
+                let pragma = Pragma::parse(options.pragma.as_deref(), "createElement", ast, ctx);
+                let pragma_frag =
+                    Pragma::parse(options.pragma_frag.as_deref(), "Fragment", ast, ctx);
                 Bindings::Classic(ClassicBindings { pragma, pragma_frag })
             }
             JsxRuntime::Automatic => {
@@ -1046,10 +1081,11 @@ fn get_read_identifier_reference<'a>(
     span: Span,
     name: Atom<'a>,
     ctx: &mut TraverseCtx<'a>,
-) -> IdentifierReference<'a> {
+) -> Expression<'a> {
     let reference_id =
         ctx.create_reference_in_current_scope(name.to_compact_str(), ReferenceFlags::Read);
-    ctx.ast.identifier_reference_with_reference_id(span, name, reference_id)
+    let ident = ctx.ast.alloc_identifier_reference_with_reference_id(span, name, reference_id);
+    Expression::Identifier(ident)
 }
 
 fn create_static_member_expression<'a>(
@@ -1064,4 +1100,150 @@ fn create_static_member_expression<'a>(
 
 fn has_proto(e: &ObjectExpression<'_>) -> bool {
     e.properties.iter().any(|p| p.prop_name().is_some_and(|name| name.0 == "__proto__"))
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+
+    use oxc_allocator::Allocator;
+    use oxc_ast::ast::Expression;
+    use oxc_semantic::{ScopeTree, SymbolTable};
+    use oxc_syntax::{node::NodeId, scope::ScopeFlags};
+    use oxc_traverse::ReusableTraverseCtx;
+
+    use crate::{TransformCtx, TransformOptions};
+
+    use super::Pragma;
+
+    macro_rules! setup {
+        ($traverse_ctx:ident, $transform_ctx:ident) => {
+            let allocator = Allocator::default();
+
+            let mut scopes = ScopeTree::default();
+            scopes.add_scope(None, NodeId::DUMMY, ScopeFlags::Top);
+
+            let traverse_ctx = ReusableTraverseCtx::new(scopes, SymbolTable::default(), &allocator);
+            // SAFETY: Macro user only gets a `&mut TraverseCtx`, which cannot be abused
+            let mut traverse_ctx = unsafe { traverse_ctx.unwrap() };
+            let $traverse_ctx = &mut traverse_ctx;
+
+            let $transform_ctx =
+                TransformCtx::new(Path::new("test.jsx"), &TransformOptions::default());
+        };
+    }
+
+    #[test]
+    fn default_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = None;
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::StaticMemberExpression(member) = &expr else { panic!() };
+        let Expression::Identifier(object) = &member.object else { panic!() };
+        assert_eq!(object.name, "React");
+        assert_eq!(member.property.name, "createElement");
+    }
+
+    #[test]
+    fn single_part_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("single");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::Identifier(ident) = &expr else { panic!() };
+        assert_eq!(ident.name, "single");
+    }
+
+    #[test]
+    fn two_part_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("first.second");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::StaticMemberExpression(member) = &expr else { panic!() };
+        let Expression::Identifier(object) = &member.object else { panic!() };
+        assert_eq!(object.name, "first");
+        assert_eq!(member.property.name, "second");
+    }
+
+    #[test]
+    fn multi_part_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("first.second.third");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::StaticMemberExpression(outer_member) = &expr else { panic!() };
+        let Expression::StaticMemberExpression(inner_member) = &outer_member.object else {
+            panic!()
+        };
+        let Expression::Identifier(object) = &inner_member.object else { panic!() };
+        assert_eq!(object.name, "first");
+        assert_eq!(inner_member.property.name, "second");
+        assert_eq!(outer_member.property.name, "third");
+    }
+
+    #[test]
+    fn this_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("this");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        assert!(matches!(&expr, Expression::ThisExpression(_)));
+    }
+
+    #[test]
+    fn this_prop_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("this.a.b");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::StaticMemberExpression(outer_member) = &expr else { panic!() };
+        let Expression::StaticMemberExpression(inner_member) = &outer_member.object else {
+            panic!()
+        };
+        assert!(matches!(&inner_member.object, Expression::ThisExpression(_)));
+        assert_eq!(inner_member.property.name, "a");
+        assert_eq!(outer_member.property.name, "b");
+    }
+
+    #[test]
+    fn import_meta_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("import.meta");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::MetaProperty(meta_prop) = &expr else { panic!() };
+        assert_eq!(&meta_prop.meta.name, "import");
+        assert_eq!(&meta_prop.property.name, "meta");
+    }
+
+    #[test]
+    fn import_meta_prop_pragma() {
+        setup!(traverse_ctx, transform_ctx);
+
+        let pragma = Some("import.meta.prop");
+        let pragma = Pragma::parse(pragma, "createElement", traverse_ctx.ast, &transform_ctx);
+        let expr = pragma.create_expression(traverse_ctx);
+
+        let Expression::StaticMemberExpression(member) = &expr else { panic!() };
+        let Expression::MetaProperty(meta_prop) = &member.object else { panic!() };
+        assert_eq!(&meta_prop.meta.name, "import");
+        assert_eq!(&meta_prop.property.name, "meta");
+        assert_eq!(member.property.name, "prop");
+    }
 }

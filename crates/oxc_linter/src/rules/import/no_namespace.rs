@@ -3,9 +3,8 @@ use oxc_diagnostics::OxcDiagnostic;
 
 use oxc_macros::declare_oxc_lint;
 use oxc_span::{CompactStr, Span};
-use oxc_syntax::module_record::ImportImportName;
 
-use crate::{context::LintContext, rule::Rule};
+use crate::{context::LintContext, module_record::ImportImportName, rule::Rule};
 
 fn no_namespace_diagnostic(span: Span) -> OxcDiagnostic {
     OxcDiagnostic::warn("Usage of namespaced aka wildcard \"*\" imports prohibited")
@@ -100,7 +99,7 @@ impl Rule for NoNamespace {
     fn run_once(&self, ctx: &LintContext<'_>) {
         let module_record = ctx.module_record();
 
-        if module_record.not_esm {
+        if !module_record.has_module_syntax {
             return;
         }
 

@@ -1,19 +1,17 @@
+use oxc_allocator::Vec;
 use oxc_ast::ast::*;
 
 use crate::{
-    dynamic_text,
-    format::function_parameters::should_group_function_parameters,
-    group, if_break, indent,
-    ir::{Doc, DocBuilder},
-    softline, space, text, Format, Prettier,
+    array, dynamic_text, format::function_parameters::should_group_function_parameters, group,
+    if_break, indent, ir::Doc, softline, text, Format, Prettier,
 };
 
 pub(super) fn print_function<'a>(
     p: &mut Prettier<'a>,
     func: &Function<'a>,
-    property_name: Option<&str>,
+    property_name: Option<&'a str>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if func.declare {
         parts.push(text!("declare "));
@@ -42,13 +40,17 @@ pub(super) fn print_function<'a>(
         parts.push(type_params.format(p));
     }
     // Prettier has `returnTypeDoc` to group together, write this for keep same with prettier.
-    parts.push(group!(p, {
-        if should_group_function_parameters(func) {
-            group!(p, func.params.format(p))
-        } else {
-            func.params.format(p)
-        }
-    }));
+    let params_doc = func.params.format(p);
+    parts.push(group!(
+        p,
+        [{
+            if should_group_function_parameters(func) {
+                group!(p, [params_doc])
+            } else {
+                params_doc
+            }
+        }]
+    ));
 
     if let Some(return_type) = &func.return_type {
         parts.push(text!(": "));
@@ -56,7 +58,7 @@ pub(super) fn print_function<'a>(
     }
 
     if let Some(body) = &func.body {
-        parts.push(space!());
+        parts.push(text!(" "));
         parts.push(body.format(p));
     }
     if func.is_ts_declare_function() || func.body.is_none() {
@@ -65,15 +67,15 @@ pub(super) fn print_function<'a>(
         }
     }
 
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 pub(super) fn print_method<'a>(p: &mut Prettier<'a>, method: &MethodDefinition<'a>) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if let Some(accessibility) = &method.accessibility {
         parts.push(text!(accessibility.as_str()));
-        parts.push(space!());
+        parts.push(text!(" "));
     }
 
     if method.r#static {
@@ -114,21 +116,21 @@ pub(super) fn print_method<'a>(p: &mut Prettier<'a>, method: &MethodDefinition<'
 
     parts.push(print_method_value(p, &method.value));
 
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 fn print_method_value<'a>(p: &mut Prettier<'a>, function: &Function<'a>) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     let parameters_doc = function.params.format(p);
     let should_group_parameters = should_group_function_parameters(function);
     let parameters_doc =
-        if should_group_parameters { group!(p, parameters_doc) } else { parameters_doc };
+        if should_group_parameters { group!(p, [parameters_doc]) } else { parameters_doc };
 
     if let Some(type_parameters) = &function.type_parameters {
         parts.push(type_parameters.format(p));
     }
 
-    parts.push(group!(p, parameters_doc));
+    parts.push(group!(p, [parameters_doc]));
 
     if let Some(ret_typ) = &function.return_type {
         parts.push(text!(": "));
@@ -136,13 +138,13 @@ fn print_method_value<'a>(p: &mut Prettier<'a>, function: &Function<'a>) -> Doc<
     }
 
     if let Some(body) = &function.body {
-        parts.push(space!());
+        parts.push(text!(" "));
         parts.push(body.format(p));
     } else if p.options.semi {
         parts.push(text!(";"));
     }
 
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 pub(super) fn print_return_or_throw_argument<'a>(
@@ -150,21 +152,24 @@ pub(super) fn print_return_or_throw_argument<'a>(
     argument: Option<&Expression<'a>>,
     is_return: bool,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     parts.push(text!(if is_return { "return" } else { "throw" }));
 
     if let Some(argument) = argument {
-        parts.push(space!());
+        parts.push(text!(" "));
         parts.push(
             if argument.is_binaryish() || matches!(argument, Expression::SequenceExpression(_)) {
-                group![
+                let argument_doc = argument.format(p);
+                group!(
                     p,
-                    if_break!(p, "("),
-                    indent!(p, softline!(), argument.format(p)),
-                    softline!(),
-                    if_break!(p, ")"),
-                ]
+                    [
+                        if_break!(p, text!("(")),
+                        indent!(p, [softline!(), argument_doc]),
+                        softline!(),
+                        if_break!(p, text!(")")),
+                    ]
+                )
             } else {
                 argument.format(p)
             },
@@ -174,5 +179,6 @@ pub(super) fn print_return_or_throw_argument<'a>(
     if let Some(semi) = p.semi() {
         parts.push(semi);
     }
-    Doc::Array(parts)
+
+    array!(p, parts)
 }

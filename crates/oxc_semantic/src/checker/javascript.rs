@@ -6,7 +6,6 @@ use oxc_diagnostics::{LabeledSpan, OxcDiagnostic};
 use oxc_ecmascript::{IsSimpleParameterList, PropName};
 use oxc_span::{GetSpan, ModuleKind, Span};
 use oxc_syntax::{
-    module_record::ExportLocalName,
     number::NumberBase,
     operator::{AssignmentOperator, BinaryOperator, LogicalOperator, UnaryOperator},
 };
@@ -47,61 +46,6 @@ pub fn check_duplicate_class_elements(ctx: &SemanticBuilder<'_>) {
             }
         }
     });
-}
-
-fn undefined_export(x0: &str, span1: Span) -> OxcDiagnostic {
-    OxcDiagnostic::error(format!("Export '{x0}' is not defined")).with_label(span1)
-}
-
-fn duplicate_export(x0: &str, span1: Span, span2: Span) -> OxcDiagnostic {
-    OxcDiagnostic::error(format!("Duplicated export '{x0}'")).with_labels([
-        span1.label("Export has already been declared here"),
-        span2.label("It cannot be redeclared here"),
-    ])
-}
-
-pub fn check_module_record(ctx: &SemanticBuilder<'_>) {
-    // Skip checkking for exports in TypeScript for now
-    if ctx.source_type.is_typescript() {
-        return;
-    }
-
-    let module_record = &ctx.module_record;
-
-    // It is a Syntax Error if any element of the ExportedBindings of ModuleItemList
-    // does not also occur in either the VarDeclaredNames of ModuleItemList, or the LexicallyDeclaredNames of ModuleItemList.
-    module_record
-        .local_export_entries
-        .iter()
-        .filter_map(|export_entry| match &export_entry.local_name {
-            ExportLocalName::Name(name_span) => Some(name_span),
-            _ => None,
-        })
-        .filter(|name_span| {
-            ctx.scope.get_binding(ctx.current_scope_id, name_span.name().as_ref()).is_none()
-        })
-        .for_each(|name_span| {
-            ctx.error(undefined_export(name_span.name(), name_span.span()));
-        });
-
-    // It is a Syntax Error if the ExportedNames of ModuleItemList contains any duplicate entries.
-    for name_span in &module_record.exported_bindings_duplicated {
-        let old_span = module_record.exported_bindings[name_span.name()];
-        ctx.error(duplicate_export(name_span.name(), name_span.span(), old_span));
-    }
-
-    for span in &module_record.export_default_duplicated {
-        let old_span = module_record.export_default.unwrap();
-        ctx.error(duplicate_export("default", *span, old_span));
-    }
-
-    // `export default x;`
-    // `export { y as default };`
-    if let (Some(span), Some(default_span)) =
-        (module_record.exported_bindings.get("default"), &module_record.export_default)
-    {
-        ctx.error(duplicate_export("default", *default_span, *span));
-    }
 }
 
 fn class_static_block_await(span: Span) -> OxcDiagnostic {
@@ -251,17 +195,13 @@ fn private_field_undeclared(x0: &str, span1: Span) -> OxcDiagnostic {
 
 fn check_private_identifier(ctx: &SemanticBuilder<'_>) {
     if let Some(class_id) = ctx.class_table_builder.current_class_id {
-        ctx.class_table_builder.classes.iter_private_identifiers(class_id).for_each(|reference| {
-            if reference.element_ids.is_empty()
-                && !ctx.class_table_builder.classes.ancestors(class_id).skip(1).any(|class_id| {
-                    ctx.class_table_builder
-                        .classes
-                        .has_private_definition(class_id, &reference.name)
-                })
-            {
+        for reference in ctx.class_table_builder.classes.iter_private_identifiers(class_id) {
+            if !ctx.class_table_builder.classes.ancestors(class_id).any(|class_id| {
+                ctx.class_table_builder.classes.has_private_definition(class_id, &reference.name)
+            }) {
                 ctx.error(private_field_undeclared(&reference.name, reference.span));
             }
-        });
+        }
     }
 }
 
@@ -281,11 +221,13 @@ pub fn check_number_literal(lit: &NumericLiteral, ctx: &SemanticBuilder<'_>) {
     // NumericLiteral :: legacy_octalIntegerLiteral
     // DecimalIntegerLiteral :: NonOctalDecimalIntegerLiteral
     // * It is a Syntax Error if the source text matched by this production is strict mode code.
-    fn leading_zero(s: &str) -> bool {
-        let mut chars = s.bytes();
-        if let Some(first) = chars.next() {
-            if let Some(second) = chars.next() {
-                return first == b'0' && second.is_ascii_digit();
+    fn leading_zero(s: Option<&Atom>) -> bool {
+        if let Some(s) = s {
+            let mut chars = s.bytes();
+            if let Some(first) = chars.next() {
+                if let Some(second) = chars.next() {
+                    return first == b'0' && second.is_ascii_digit();
+                }
             }
         }
         false
@@ -293,10 +235,10 @@ pub fn check_number_literal(lit: &NumericLiteral, ctx: &SemanticBuilder<'_>) {
 
     if ctx.strict_mode() {
         match lit.base {
-            NumberBase::Octal if leading_zero(lit.raw) => {
+            NumberBase::Octal if leading_zero(lit.raw.as_ref()) => {
                 ctx.error(legacy_octal(lit.span));
             }
-            NumberBase::Decimal | NumberBase::Float if leading_zero(lit.raw) => {
+            NumberBase::Decimal | NumberBase::Float if leading_zero(lit.raw.as_ref()) => {
                 ctx.error(leading_zero_decimal(lit.span));
             }
             _ => {}
@@ -423,30 +365,18 @@ fn new_target(span: Span) -> OxcDiagnostic {
 .with_label(span)
 }
 
-fn new_target_property(span: Span) -> OxcDiagnostic {
-    OxcDiagnostic::error("The only valid meta property for new is new.target").with_label(span)
-}
-
 fn import_meta(span: Span) -> OxcDiagnostic {
     OxcDiagnostic::error("Unexpected import.meta expression")
         .with_help("import.meta is only allowed in module code")
         .with_label(span)
 }
 
-fn import_meta_property(span: Span) -> OxcDiagnostic {
-    OxcDiagnostic::error("The only valid meta property for import is import.meta").with_label(span)
-}
-
 pub fn check_meta_property<'a>(prop: &MetaProperty, node: &AstNode<'a>, ctx: &SemanticBuilder<'a>) {
     match prop.meta.name.as_str() {
         "import" => {
-            if prop.property.name == "meta" {
-                if ctx.source_type.is_script() {
-                    return ctx.error(import_meta(prop.span));
-                }
-                return;
+            if prop.property.name == "meta" && ctx.source_type.is_script() {
+                ctx.error(import_meta(prop.span));
             }
-            ctx.error(import_meta_property(prop.span));
         }
         "new" => {
             if prop.property.name == "target" {
@@ -463,11 +393,9 @@ pub fn check_meta_property<'a>(prop: &MetaProperty, node: &AstNode<'a>, ctx: &Se
                     }
                 }
                 if !in_function_scope {
-                    return ctx.error(new_target(prop.span));
+                    ctx.error(new_target(prop.span));
                 }
-                return;
             }
-            ctx.error(new_target_property(prop.span));
         }
         _ => {}
     }
@@ -1059,7 +987,8 @@ fn delete_of_unqualified(span: Span) -> OxcDiagnostic {
 }
 
 fn delete_private_field(span: Span) -> OxcDiagnostic {
-    OxcDiagnostic::error("Private fields can not be deleted").with_label(span)
+    OxcDiagnostic::error("The operand of a 'delete' operator cannot be a private identifier.")
+        .with_label(span)
 }
 
 pub fn check_unary_expression<'a>(
@@ -1075,6 +1004,11 @@ pub fn check_unary_expression<'a>(
             }
             Expression::PrivateFieldExpression(expr) => {
                 ctx.error(delete_private_field(expr.span));
+            }
+            Expression::ChainExpression(chain_expr) => {
+                if let ChainElement::PrivateFieldExpression(e) = &chain_expr.expression {
+                    ctx.error(delete_private_field(e.field.span));
+                }
             }
             _ => {}
         }

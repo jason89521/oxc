@@ -11,7 +11,7 @@ use oxc_allocator::Allocator;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    ir::{Doc, DocBuilder, Fill, IfBreak, IndentIfBreak, Line},
+    ir::{Doc, Fill, IfBreak, IndentIfBreak, Line},
     printer::command::{Command, Indent, Mode},
     GroupId, PrettierOptions,
 };
@@ -34,13 +34,6 @@ pub struct Printer<'a> {
     new_line: &'static str,
 
     allocator: &'a Allocator,
-}
-
-impl<'a> DocBuilder<'a> for Printer<'a> {
-    #[inline]
-    fn allocator(&self) -> &'a Allocator {
-        self.allocator
-    }
 }
 
 impl<'a> Printer<'a> {
@@ -131,7 +124,7 @@ impl<'a> Printer<'a> {
                     Command::new(indent, if group.should_break { Mode::Break } else { mode }, doc)
                 }));
 
-                self.set_group_mode_from_last_cmd(group.id);
+                self.set_group_mode_from_last_cmd(group.group_id);
             }
             Mode::Break => {
                 #[allow(clippy::cast_possible_wrap)]
@@ -140,7 +133,7 @@ impl<'a> Printer<'a> {
                     unreachable!();
                 };
                 let should_break = group.should_break;
-                let group_id = group.id;
+                let group_id = group.group_id;
                 let cmd = Command::new(indent, Mode::Flat, doc);
                 if !should_break && self.fits(&cmd, remaining_width) {
                     self.cmds.push(Command::new(indent, Mode::Flat, cmd.doc));
@@ -177,20 +170,18 @@ impl<'a> Printer<'a> {
 
     fn handle_indent_if_break(&mut self, indent: Indent, mode: Mode, doc: IndentIfBreak<'a>) {
         let IndentIfBreak { contents, group_id } = doc;
-        let group_mode = group_id.map_or(Some(mode), |id| self.group_mode_map.get(&id).copied());
+        let group_mode = self.group_mode_map.get(&group_id).copied();
 
         match group_mode {
             Some(Mode::Flat) => {
-                self.cmds
-                    .extend(contents.into_iter().rev().map(|doc| Command::new(indent, mode, doc)));
+                self.cmds.push(Command::new(indent, mode, contents.unbox()));
             }
             Some(Mode::Break) => {
-                self.cmds.extend(
-                    contents
-                        .into_iter()
-                        .rev()
-                        .map(|doc| Command::new(Indent::new(indent.length + 1), mode, doc)),
-                );
+                self.cmds.push(Command::new(
+                    Indent::new(indent.length + 1),
+                    mode,
+                    contents.unbox(),
+                ));
             }
             None => {}
         }
@@ -237,12 +228,12 @@ impl<'a> Printer<'a> {
     }
 
     fn handle_if_break(&mut self, if_break: IfBreak<'a>, indent: Indent, mode: Mode) {
-        let IfBreak { break_contents, flat_content, group_id } = if_break;
+        let IfBreak { break_contents, flat_contents, group_id } = if_break;
         let group_mode = group_id.map_or(Some(mode), |id| self.group_mode_map.get(&id).copied());
 
         match group_mode {
             Some(Mode::Flat) => {
-                self.cmds.push(Command::new(indent, Mode::Flat, flat_content.unbox()));
+                self.cmds.push(Command::new(indent, Mode::Flat, flat_contents.unbox()));
             }
             Some(Mode::Break) => {
                 self.cmds.push(Command::new(indent, Mode::Break, break_contents.unbox()));
@@ -294,7 +285,7 @@ impl<'a> Printer<'a> {
         let Some(second_content) = fill.dequeue() else {
             return;
         };
-        let mut docs = self.vec();
+        let mut docs = oxc_allocator::Vec::new_in(self.allocator);
         let content = content_flat_cmd.doc;
         docs.push(content);
         docs.push(whitespace_flat_cmd.doc);
@@ -372,9 +363,10 @@ impl<'a> Printer<'a> {
                 Doc::Str(string) => {
                     remaining_width -= string.len() as isize;
                 }
-                Doc::IndentIfBreak(IndentIfBreak { contents: docs, .. })
-                | Doc::Indent(docs)
-                | Doc::Array(docs) => {
+                Doc::IndentIfBreak(IndentIfBreak { contents, .. }) => {
+                    queue.push_front((mode, contents));
+                }
+                Doc::Indent(docs) | Doc::Array(docs) => {
                     // Prepend docs to the queue
                     for d in docs.iter().rev() {
                         queue.push_front((mode, d));
@@ -401,7 +393,7 @@ impl<'a> Printer<'a> {
                     let contents = if group_mode.is_break() {
                         &if_break_doc.break_contents
                     } else {
-                        &if_break_doc.flat_content
+                        &if_break_doc.flat_contents
                     };
 
                     queue.push_front((mode, contents));
@@ -462,9 +454,8 @@ impl<'a> Printer<'a> {
                 group.should_break
             }
             Doc::IfBreak(d) => Self::propagate_breaks(&mut d.break_contents),
-            Doc::Array(arr)
-            | Doc::Indent(arr)
-            | Doc::IndentIfBreak(IndentIfBreak { contents: arr, .. }) => check_array(arr),
+            Doc::Array(arr) | Doc::Indent(arr) => check_array(arr),
+            Doc::IndentIfBreak(IndentIfBreak { contents, .. }) => Self::propagate_breaks(contents),
             _ => false,
         }
     }

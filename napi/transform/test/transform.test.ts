@@ -25,9 +25,14 @@ describe('simple', () => {
     assert.equal(ret.code, 'export class A {}\n');
   });
 
-  it('uses the `declaration option`', () => {
+  it('uses the `declaration` option', () => {
     const ret = transform('test.ts', code, { typescript: { declaration: {} } });
     assert.equal(ret.declaration, 'export declare class A<T> {}\n');
+  });
+
+  it('uses the `sourcemap` option', () => {
+    const ret = transform('test.ts', code, { typescript: { declaration: {} }, sourcemap: true });
+    assert(ret.declarationMap);
   });
 });
 
@@ -52,6 +57,8 @@ describe('transform', () => {
 
 describe('target', () => {
   const data = [
+    ['es5', '() => {};\n'],
+    ['es6', 'a ** b;\n'],
     ['es2015', 'a ** b;\n'],
     ['es2016', 'async function foo() {}\n'],
     ['es2017', '({ ...x });\n'],

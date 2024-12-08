@@ -117,12 +117,11 @@ export default function generateAncestorsCode(types) {
       clippy::missing_safety_doc,
       clippy::ptr_as_ptr,
       clippy::undocumented_unsafe_blocks,
-      clippy::cast_ptr_alignment
+      clippy::cast_ptr_alignment,
+      clippy::needless_lifetimes
     )]
 
-    use std::{cell::Cell, marker::PhantomData};
-
-    use memoffset::offset_of;
+    use std::{cell::Cell, marker::PhantomData, mem::offset_of};
 
     use oxc_allocator::{Address, Box, GetAddress, Vec};
     use oxc_ast::ast::*;

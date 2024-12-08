@@ -1,25 +1,22 @@
+use oxc_allocator::Vec;
 use oxc_ast::{ast::*, AstKind};
 
-use super::{statement, Format};
-use crate::{
-    hardline,
-    ir::{Doc, DocBuilder},
-    text, Prettier,
-};
+use crate::{array, format::statement, hardline, indent, ir::Doc, text, Format, Prettier};
 
 pub(super) fn print_block<'a>(
     p: &mut Prettier<'a>,
     stmts: &[Statement<'a>],
     directives: Option<&[Directive<'a>]>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
+
     parts.push(text!("{"));
     if let Some(doc) = print_block_body(p, stmts, directives, true, false) {
         parts.push({
-            let mut parts = p.vec();
+            let mut parts = Vec::new_in(p.allocator);
             parts.extend(hardline!());
             parts.push(doc);
-            Doc::Indent(parts)
+            indent!(p, parts)
         });
         parts.extend(hardline!());
     } else {
@@ -47,7 +44,8 @@ pub(super) fn print_block<'a>(
         }
     }
     parts.push(text!("}"));
-    Doc::Array(parts)
+
+    array!(p, parts)
 }
 
 pub(super) fn print_block_body<'a>(
@@ -64,7 +62,7 @@ pub(super) fn print_block_body<'a>(
         return None;
     }
 
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if has_directives {
         if let Some(directives) = directives {
@@ -81,5 +79,5 @@ pub(super) fn print_block_body<'a>(
         ));
     }
 
-    Some(Doc::Array(parts))
+    Some(array!(p, parts))
 }

@@ -1,10 +1,9 @@
+use oxc_allocator::Vec;
 use oxc_ast::{ast::*, AstKind};
 
 use crate::{
-    comments::CommentFlags,
-    hardline, if_break, indent,
-    ir::{Doc, DocBuilder, Group},
-    line, softline, space, text, Format, Prettier,
+    array, comments::CommentFlags, group, hardline, if_break, indent, ir::Doc, line, softline,
+    text, Format, Prettier,
 };
 
 pub(super) fn should_hug_the_only_function_parameter(
@@ -62,7 +61,7 @@ pub(super) fn print_function_parameters<'a>(
     p: &mut Prettier<'a>,
     params: &FormalParameters<'a>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     let is_arrow_function = matches!(p.parent_kind(), AstKind::ArrowFunctionExpression(_));
     let need_parens =
         !is_arrow_function || p.options.arrow_parens.is_always() || params.items.len() != 1;
@@ -72,7 +71,7 @@ pub(super) fn print_function_parameters<'a>(
 
     let should_hug_the_only_function_parameter = should_hug_the_only_function_parameter(p, params);
 
-    let mut printed = p.vec();
+    let mut printed = Vec::new_in(p.allocator);
     let len = params.items.len();
     let has_rest = params.rest.is_some();
 
@@ -84,7 +83,7 @@ pub(super) fn print_function_parameters<'a>(
                 printed.push(text!(","));
 
                 if should_hug_the_only_function_parameter {
-                    printed.push(space!());
+                    printed.push(text!(" "));
                 } else if p.is_next_line_empty(this_param.span) {
                     printed.extend(hardline!());
                     printed.extend(hardline!());
@@ -98,7 +97,7 @@ pub(super) fn print_function_parameters<'a>(
     for (i, param) in params.items.iter().enumerate() {
         if let Some(accessibility) = &param.accessibility {
             printed.push(text!(accessibility.as_str()));
-            printed.push(space!());
+            printed.push(text!(" "));
         }
 
         if param.r#override {
@@ -115,7 +114,7 @@ pub(super) fn print_function_parameters<'a>(
         }
         printed.push(text!(","));
         if should_hug_the_only_function_parameter {
-            printed.push(space!());
+            printed.push(text!(" "));
         } else if p.is_next_line_empty(param.span) {
             printed.extend(hardline!());
             printed.extend(hardline!());
@@ -128,30 +127,30 @@ pub(super) fn print_function_parameters<'a>(
     }
 
     if should_hug_the_only_function_parameter {
-        let mut array = p.vec();
-        array.push(text!("("));
-        array.extend(printed);
-        array.push(text!(")"));
-        return Doc::Array(array);
+        let mut parts = Vec::new_in(p.allocator);
+        parts.push(text!("("));
+        parts.extend(printed);
+        parts.push(text!(")"));
+        return array!(p, parts);
     }
 
-    let mut indented = p.vec();
+    let mut indented = Vec::new_in(p.allocator);
     indented.push(softline!());
     indented.extend(printed);
-    let indented = indent!(p, Doc::Array(indented));
+    let indented = indent!(p, indented);
     parts.push(indented);
     let skip_dangling_comma = params.rest.is_some()
         || matches!(p.parent_kind(), AstKind::Function(func) if func.this_param.is_some());
-    parts.push(if_break!(p, if skip_dangling_comma { "" } else { "," }));
+    parts.push(if_break!(p, text!(if skip_dangling_comma { "" } else { "," })));
     parts.push(softline!());
     if need_parens {
         parts.push(text!(")"));
     }
 
     if p.args.expand_first_arg {
-        Doc::Array(parts)
+        array!(p, parts)
     } else {
-        Doc::Group(Group::new(parts))
+        group!(p, parts)
     }
 }
 

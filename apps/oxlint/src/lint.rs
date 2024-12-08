@@ -36,7 +36,11 @@ impl Runner for LintRunner {
     fn run(self) -> CliRunResult {
         if self.options.list_rules {
             let mut stdout = BufWriter::new(std::io::stdout());
-            Linter::print_rules(&mut stdout);
+            if self.options.output_options.format == OutputFormat::Json {
+                Linter::print_rules_json(&mut stdout);
+            } else {
+                Linter::print_rules(&mut stdout);
+            }
             return CliRunResult::None;
         }
 
@@ -57,16 +61,6 @@ impl Runner for LintRunner {
         let provided_path_count = paths.len();
         let now = Instant::now();
 
-        // append cwd to all paths
-        paths = paths
-            .into_iter()
-            .map(|x| {
-                let mut path_with_cwd = self.cwd.clone();
-                path_with_cwd.push(x);
-                path_with_cwd
-            })
-            .collect();
-
         // The ignore crate whitelists explicit paths, but priority
         // should be given to the ignore file. Many users lint
         // automatically and pass a list of changed files explicitly.
@@ -76,6 +70,16 @@ impl Runner for LintRunner {
             let (ignore, _err) = Gitignore::new(&ignore_options.ignore_path);
             paths.retain(|p| if p.is_dir() { true } else { !ignore.matched(p, false).is_ignore() });
         }
+
+        // Append cwd to all paths
+        paths = paths
+            .into_iter()
+            .map(|x| {
+                let mut path_with_cwd = self.cwd.clone();
+                path_with_cwd.push(x);
+                path_with_cwd
+            })
+            .collect();
 
         if paths.is_empty() {
             // If explicit paths were provided, but all have been
@@ -102,7 +106,8 @@ impl Runner for LintRunner {
             .copied()
             .collect::<Vec<&'static str>>();
 
-        let config_search_result = Self::find_oxlint_config(&self.cwd, &basic_options.config);
+        let config_search_result =
+            Self::find_oxlint_config(&self.cwd, basic_options.config.as_ref());
 
         if let Err(err) = config_search_result {
             return err;
@@ -251,7 +256,7 @@ impl LintRunner {
     // when config is provided, but not found, an CliRunResult is returned, else the oxlintrc config file is returned
     // when no config is provided, it will search for the default file names in the current working directory
     // when no file is found, the default configuration is returned
-    fn find_oxlint_config(cwd: &Path, config: &Option<PathBuf>) -> Result<Oxlintrc, CliRunResult> {
+    fn find_oxlint_config(cwd: &Path, config: Option<&PathBuf>) -> Result<Oxlintrc, CliRunResult> {
         if let Some(config_path) = config {
             return match Oxlintrc::from_file(config_path) {
                 Ok(config) => Ok(config),
@@ -775,5 +780,66 @@ mod test {
             "fixtures/config_ignore_patterns/ignore_directory",
         ]);
         assert_eq!(result.number_of_files, 1);
+    }
+
+    // Issue: <https://github.com/oxc-project/oxc/pull/7566>
+    #[test]
+    fn ignore_path_with_relative_files() {
+        let args = &[
+            "--ignore-path",
+            "fixtures/issue_7566/.oxlintignore",
+            "fixtures/issue_7566/tests/main.js",
+            "fixtures/issue_7566/tests/function/main.js",
+        ];
+        let result = test(args);
+        assert_eq!(result.number_of_files, 0);
+        assert_eq!(result.number_of_warnings, 0);
+        assert_eq!(result.number_of_errors, 0);
+    }
+
+    #[test]
+    fn test_jest_and_vitest_alias_rules() {
+        let args = &[
+            "-c",
+            "fixtures/jest_and_vitest_alias_rules/oxlint-jest.json",
+            "fixtures/jest_and_vitest_alias_rules/test.js",
+        ];
+        let result = test(args);
+        assert_eq!(result.number_of_files, 1);
+        assert_eq!(result.number_of_warnings, 0);
+        assert_eq!(result.number_of_errors, 1);
+
+        let args = &[
+            "-c",
+            "fixtures/jest_and_vitest_alias_rules/oxlint-vitest.json",
+            "fixtures/jest_and_vitest_alias_rules/test.js",
+        ];
+        let result = test(args);
+        assert_eq!(result.number_of_files, 1);
+        assert_eq!(result.number_of_warnings, 0);
+        assert_eq!(result.number_of_errors, 1);
+    }
+
+    #[test]
+    fn test_eslint_and_typescript_alias_rules() {
+        let args = &[
+            "-c",
+            "fixtures/eslint_and_typescript_alias_rules/oxlint-eslint.json",
+            "fixtures/eslint_and_typescript_alias_rules/test.js",
+        ];
+        let result = test(args);
+        assert_eq!(result.number_of_files, 1);
+        assert_eq!(result.number_of_warnings, 0);
+        assert_eq!(result.number_of_errors, 1);
+
+        let args = &[
+            "-c",
+            "fixtures/eslint_and_typescript_alias_rules/oxlint-typescript.json",
+            "fixtures/eslint_and_typescript_alias_rules/test.js",
+        ];
+        let result = test(args);
+        assert_eq!(result.number_of_files, 1);
+        assert_eq!(result.number_of_warnings, 0);
+        assert_eq!(result.number_of_errors, 1);
     }
 }

@@ -4,9 +4,9 @@ use oxc_allocator::Vec;
 use oxc_ast::ast::*;
 
 use crate::{
-    group, if_break, indent,
-    ir::{Doc, DocBuilder, Separator},
-    line, softline, space, text, Format, Prettier,
+    array, group, if_break, indent,
+    ir::{Doc, JoinSeparator},
+    join, line, softline, text, Format, Prettier,
 };
 
 pub(super) fn print_export_declaration<'a>(
@@ -15,7 +15,7 @@ pub(super) fn print_export_declaration<'a>(
 ) -> Doc<'a> {
     debug_assert!(decl.is_export());
 
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     parts.push(text!("export"));
 
     if decl.is_default_export() {
@@ -37,7 +37,7 @@ pub(super) fn print_export_declaration<'a>(
     }
 
     if let Some(with_clause) = decl.with_clause() {
-        parts.push(space!());
+        parts.push(text!(" "));
         parts.push(with_clause.format(p));
     }
 
@@ -45,7 +45,7 @@ pub(super) fn print_export_declaration<'a>(
         parts.push(doc);
     }
 
-    Doc::Array(parts)
+    array!(p, parts)
 }
 
 fn print_semicolon_after_export_declaration<'a>(
@@ -87,11 +87,11 @@ pub fn print_module_specifiers<'a, T: Format<'a>>(
     include_default: bool,
     include_namespace: bool,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
     if specifiers.is_empty() {
         parts.push(text!(" {}"));
     } else {
-        parts.push(space!());
+        parts.push(text!(" "));
 
         let mut specifiers_iter: VecDeque<_> = specifiers.iter().collect();
         if include_default {
@@ -114,31 +114,35 @@ pub fn print_module_specifiers<'a, T: Format<'a>>(
             if can_break {
                 let docs =
                     specifiers_iter.iter().map(|s| s.format(p)).collect::<std::vec::Vec<_>>();
-                parts.push(group![
+                parts.push(group!(
                     p,
-                    text!("{"),
-                    indent![
-                        p,
+                    [
+                        text!("{"),
+                        indent!(
+                            p,
+                            [
+                                if p.options.bracket_spacing { line!() } else { softline!() },
+                                join!(p, JoinSeparator::CommaLine, docs)
+                            ]
+                        ),
+                        if_break!(p, text!(if p.should_print_es5_comma() { "," } else { "" })),
                         if p.options.bracket_spacing { line!() } else { softline!() },
-                        Doc::Array(p.join(Separator::CommaLine, docs))
-                    ],
-                    if_break!(p, if p.should_print_es5_comma() { "," } else { "" }, "", None),
-                    if p.options.bracket_spacing { line!() } else { softline!() },
-                    text!("}"),
-                ]);
+                        text!("}"),
+                    ]
+                ));
             } else {
                 parts.push(text!("{"));
                 if p.options.bracket_spacing {
-                    parts.push(space!());
+                    parts.push(text!(" "));
                 }
                 parts.extend(specifiers_iter.iter().map(|s| s.format(p)));
                 if p.options.bracket_spacing {
-                    parts.push(space!());
+                    parts.push(text!(" "));
                 }
                 parts.push(text!("}"));
             }
         }
     }
 
-    Doc::Array(parts)
+    array!(p, parts)
 }

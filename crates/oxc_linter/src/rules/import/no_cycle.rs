@@ -5,12 +5,13 @@ use cow_utils::CowUtils;
 use oxc_diagnostics::OxcDiagnostic;
 use oxc_macros::declare_oxc_lint;
 use oxc_span::{CompactStr, Span};
-use oxc_syntax::{
-    module_graph_visitor::{ModuleGraphVisitorBuilder, ModuleGraphVisitorEvent, VisitFoldWhile},
-    module_record::ModuleRecord,
-};
 
-use crate::{context::LintContext, rule::Rule};
+use crate::{
+    context::LintContext,
+    module_graph_visitor::{ModuleGraphVisitorBuilder, ModuleGraphVisitorEvent, VisitFoldWhile},
+    rule::Rule,
+    ModuleRecord,
+};
 
 fn no_cycle_diagnostic(span: Span, paths: &str) -> OxcDiagnostic {
     OxcDiagnostic::warn("Dependency cycle detected")
@@ -169,7 +170,7 @@ impl Rule for NoCycle {
             });
 
         if visitor_result.result {
-            let span = module_record.requested_modules[&stack[0].0][0].span();
+            let span = module_record.requested_modules[&stack[0].0][0].span;
             let help = stack
                 .iter()
                 .map(|(specifier, path)| {

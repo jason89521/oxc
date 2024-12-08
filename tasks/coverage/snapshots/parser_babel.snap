@@ -3,7 +3,7 @@ commit: 54a8389f
 parser_babel Summary:
 AST Parsed     : 2205/2218 (99.41%)
 Positive Passed: 2190/2218 (98.74%)
-Negative Passed: 1510/1634 (92.41%)
+Negative Passed: 1511/1634 (92.47%)
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/annex-b/enabled/3.1-sloppy-labeled-functions-if-body/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/core/categorized/invalid-fn-decl-labeled-inside-if/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/core/categorized/invalid-fn-decl-labeled-inside-loop/input.js
@@ -28,7 +28,6 @@ Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/comma-after-spread-nested/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/no-pattern-in-rest-with-ts/input.js
-Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/failure-delete-optional-private-property/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2022/class-properties/super-inside-function/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2022/class-properties/yield-in-class-property-in-generator/input.js
 Expect Syntax Error: tasks/coverage/babel/packages/babel-parser/test/fixtures/es2022/class-static-block/invalid-decorators/input.js
@@ -943,11 +942,10 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·            ──────
    ╰────
 
-  × Expected `(` but found `await`
+  × `await` is only allowed within async functions and at the top levels of modules
    ╭─[babel/packages/babel-parser/test/fixtures/core/opts/allowAwaitOutsideFunction-false/input.js:1:5]
  1 │ for await (const i of imports) {}
-   ·     ──┬──
-   ·       ╰── `(` expected
+   ·     ─────
    ╰────
 
   × Unexpected new.target expression
@@ -3031,14 +3029,20 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                    ───────────
    ╰────
 
-  × Duplicated export 'default'
+  × Duplicated default export
    ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-export-default/input.js:1:8]
  1 │ export default {};
-   ·        ───┬───
-   ·           ╰── Export has already been declared here
+   ·        ───────
  2 │ export default function() {};
-   ·        ───┬───
-   ·           ╰── It cannot be redeclared here
+   ·        ───────
+   ╰────
+
+  × Duplicated default export
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-export-default-and-export-as-default/input.js:1:8]
+ 1 │ export default function() {};
+   ·        ───────
+ 2 │ export { foo as default };
+   ·                 ───────
    ╰────
 
   × Export 'foo' is not defined
@@ -3048,14 +3052,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·          ───
    ╰────
 
-  × Duplicated export 'default'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-export-default-and-export-as-default/input.js:1:8]
- 1 │ export default function() {};
-   ·        ───┬───
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export/input.js:1:10]
+ 1 │ export { foo };
+   ·          ─┬─
    ·           ╰── Export has already been declared here
- 2 │ export { foo as default };
-   ·                 ───┬───
-   ·                    ╰── It cannot be redeclared here
+ 2 │ export { bar as foo };
+   ·                 ─┬─
+   ·                  ╰── It cannot be redeclared here
    ╰────
 
   × Export 'foo' is not defined
@@ -3070,16 +3074,6 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  1 │ export { foo };
  2 │ export { bar as foo };
    ·          ───
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export/input.js:1:10]
- 1 │ export { foo };
-   ·          ─┬─
-   ·           ╰── Export has already been declared here
- 2 │ export { bar as foo };
-   ·                 ─┬─
-   ·                  ╰── It cannot be redeclared here
    ╰────
 
   × Duplicated export 'Foo'
@@ -3102,16 +3096,6 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                 ╰── It cannot be redeclared here
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring10/input.js:1:17]
- 1 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── `foo` has already been declared here
- 2 │ export const { a: [{foo}] } = bar;
-   ·                     ─┬─
-   ·                      ╰── It can not be redeclared here
-   ╰────
-
   × Duplicated export 'foo'
    ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring10/input.js:1:17]
  1 │ export function foo() {};
@@ -3122,14 +3106,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                      ╰── It cannot be redeclared here
    ╰────
 
-  × Identifier `foo4` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring11/input.js:1:17]
- 1 │ export function foo4() {};
-   ·                 ──┬─
-   ·                   ╰── `foo4` has already been declared here
- 2 │ export const [{ a: [{ foo }], b: { foo2: [{ foo3: foo4 }] } }] = bar;
-   ·                                                   ──┬─
-   ·                                                     ╰── It can not be redeclared here
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring10/input.js:1:17]
+ 1 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── `foo` has already been declared here
+ 2 │ export const { a: [{foo}] } = bar;
+   ·                     ─┬─
+   ·                      ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo4'
@@ -3143,13 +3127,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo4` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring12/input.js:1:17]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring11/input.js:1:17]
  1 │ export function foo4() {};
    ·                 ──┬─
    ·                   ╰── `foo4` has already been declared here
- 2 │ export const { a: [{ foo }], b: { foo2: [{ foo3: foo4 }] } } = bar;
-   ·                                                  ──┬─
-   ·                                                    ╰── It can not be redeclared here
+ 2 │ export const [{ a: [{ foo }], b: { foo2: [{ foo3: foo4 }] } }] = bar;
+   ·                                                   ──┬─
+   ·                                                     ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo4'
@@ -3163,13 +3147,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo4` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring13/input.js:1:17]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring12/input.js:1:17]
  1 │ export function foo4() {};
    ·                 ──┬─
    ·                   ╰── `foo4` has already been declared here
- 2 │ export const { a: [{ foo4: foo }], b, c: { foo2: [{ foo3: foo4 }] } } = bar;
-   ·                                                           ──┬─
-   ·                                                             ╰── It can not be redeclared here
+ 2 │ export const { a: [{ foo }], b: { foo2: [{ foo3: foo4 }] } } = bar;
+   ·                                                  ──┬─
+   ·                                                    ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo4'
@@ -3182,15 +3166,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                                                             ╰── It cannot be redeclared here
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring14/input.js:1:14]
- 1 │ export const foo = 1;
-   ·              ─┬─
-   ·               ╰── `foo` has already been declared here
- 2 │ export const { foo2: foo } = bar;
-   ·                      ─┬─
-   ·                       ╰── It can not be redeclared here
- 3 │ 
+  × Identifier `foo4` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring13/input.js:1:17]
+ 1 │ export function foo4() {};
+   ·                 ──┬─
+   ·                   ╰── `foo4` has already been declared here
+ 2 │ export const { a: [{ foo4: foo }], b, c: { foo2: [{ foo3: foo4 }] } } = bar;
+   ·                                                           ──┬─
+   ·                                                             ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo'
@@ -3204,14 +3187,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ 
    ╰────
 
-  × Identifier `foo2` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring15/input.js:1:21]
- 1 │ export const { foo: foo2 } = bar;
-   ·                     ──┬─
-   ·                       ╰── `foo2` has already been declared here
- 2 │ export const foo2 = 1;
-   ·              ──┬─
-   ·                ╰── It can not be redeclared here
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring14/input.js:1:14]
+ 1 │ export const foo = 1;
+   ·              ─┬─
+   ·               ╰── `foo` has already been declared here
+ 2 │ export const { foo2: foo } = bar;
+   ·                      ─┬─
+   ·                       ╰── It can not be redeclared here
  3 │ 
    ╰────
 
@@ -3226,14 +3209,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ 
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring16/input.js:1:14]
- 1 │ export const foo = 1;
-   ·              ─┬─
-   ·               ╰── `foo` has already been declared here
- 2 │ export const [bar, ...foo] = baz;
-   ·                       ─┬─
-   ·                        ╰── It can not be redeclared here
+  × Identifier `foo2` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring15/input.js:1:21]
+ 1 │ export const { foo: foo2 } = bar;
+   ·                     ──┬─
+   ·                       ╰── `foo2` has already been declared here
+ 2 │ export const foo2 = 1;
+   ·              ──┬─
+   ·                ╰── It can not be redeclared here
  3 │ 
    ╰────
 
@@ -3248,14 +3231,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ 
    ╰────
 
-  × Identifier `bar` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring17/input.js:1:23]
- 1 │ export const [foo, ...bar] = baz;
-   ·                       ─┬─
-   ·                        ╰── `bar` has already been declared here
- 2 │ export const bar = 1;
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring16/input.js:1:14]
+ 1 │ export const foo = 1;
    ·              ─┬─
-   ·               ╰── It can not be redeclared here
+   ·               ╰── `foo` has already been declared here
+ 2 │ export const [bar, ...foo] = baz;
+   ·                       ─┬─
+   ·                        ╰── It can not be redeclared here
  3 │ 
    ╰────
 
@@ -3270,14 +3253,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ 
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring18/input.js:1:14]
- 1 │ export const foo = 1;
+  × Identifier `bar` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring17/input.js:1:23]
+ 1 │ export const [foo, ...bar] = baz;
+   ·                       ─┬─
+   ·                        ╰── `bar` has already been declared here
+ 2 │ export const bar = 1;
    ·              ─┬─
-   ·               ╰── `foo` has already been declared here
- 2 │ export const [bar, [baz, ...foo]] = qux;
-   ·                             ─┬─
-   ·                              ╰── It can not be redeclared here
+   ·               ╰── It can not be redeclared here
  3 │ 
    ╰────
 
@@ -3293,13 +3276,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring19/input.js:1:14]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring18/input.js:1:14]
  1 │ export const foo = 1;
    ·              ─┬─
    ·               ╰── `foo` has already been declared here
- 2 │ export const { bar: [baz, ...foo] } = qux;
-   ·                              ─┬─
-   ·                               ╰── It can not be redeclared here
+ 2 │ export const [bar, [baz, ...foo]] = qux;
+   ·                             ─┬─
+   ·                              ╰── It can not be redeclared here
  3 │ 
    ╰────
 
@@ -3315,131 +3298,132 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring2/input.js:1:17]
- 1 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── `foo` has already been declared here
- 2 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring2/input.js:1:17]
- 1 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── Export has already been declared here
- 2 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring3/input.js:1:16]
- 1 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── `foo` has already been declared here
- 2 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring3/input.js:1:16]
- 1 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── Export has already been declared here
- 2 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring4/input.js:1:17]
- 1 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── `foo` has already been declared here
- 2 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring4/input.js:1:17]
- 1 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── Export has already been declared here
- 2 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring5/input.js:1:15]
- 1 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── `foo` has already been declared here
- 2 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring5/input.js:1:15]
- 1 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── Export has already been declared here
- 2 │ export function foo() {};
-   ·                 ─┬─
-   ·                  ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring6/input.js:1:16]
- 1 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── `foo` has already been declared here
- 2 │ export const [foo] = bar2;
-   ·               ─┬─
-   ·                ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring6/input.js:1:16]
- 1 │ export const { foo } = bar;
-   ·                ─┬─
-   ·                 ╰── Export has already been declared here
- 2 │ export const [foo] = bar2;
-   ·               ─┬─
-   ·                ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring7/input.js:1:15]
- 1 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── `foo` has already been declared here
- 2 │ export const { foo } = bar2;
-   ·                ─┬─
-   ·                 ╰── It can not be redeclared here
-   ╰────
-
-  × Duplicated export 'foo'
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring7/input.js:1:15]
- 1 │ export const [foo] = bar;
-   ·               ─┬─
-   ·                ╰── Export has already been declared here
- 2 │ export const { foo } = bar2;
-   ·                ─┬─
-   ·                 ╰── It cannot be redeclared here
-   ╰────
-
-  × Identifier `Foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring8/input.js:1:14]
- 1 │ export class Foo {};
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring19/input.js:1:14]
+ 1 │ export const foo = 1;
    ·              ─┬─
-   ·               ╰── `Foo` has already been declared here
- 2 │ export const { Foo } = bar;
+   ·               ╰── `foo` has already been declared here
+ 2 │ export const { bar: [baz, ...foo] } = qux;
+   ·                              ─┬─
+   ·                               ╰── It can not be redeclared here
+ 3 │ 
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring2/input.js:1:17]
+ 1 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── Export has already been declared here
+ 2 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring2/input.js:1:17]
+ 1 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── `foo` has already been declared here
+ 2 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── It can not be redeclared here
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring3/input.js:1:16]
+ 1 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── Export has already been declared here
+ 2 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring3/input.js:1:16]
+ 1 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── `foo` has already been declared here
+ 2 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── It can not be redeclared here
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring4/input.js:1:17]
+ 1 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── Export has already been declared here
+ 2 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring4/input.js:1:17]
+ 1 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── `foo` has already been declared here
+ 2 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── It can not be redeclared here
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring5/input.js:1:15]
+ 1 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── Export has already been declared here
+ 2 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring5/input.js:1:15]
+ 1 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── `foo` has already been declared here
+ 2 │ export function foo() {};
+   ·                 ─┬─
+   ·                  ╰── It can not be redeclared here
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring6/input.js:1:16]
+ 1 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── Export has already been declared here
+ 2 │ export const [foo] = bar2;
+   ·               ─┬─
+   ·                ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring6/input.js:1:16]
+ 1 │ export const { foo } = bar;
+   ·                ─┬─
+   ·                 ╰── `foo` has already been declared here
+ 2 │ export const [foo] = bar2;
+   ·               ─┬─
+   ·                ╰── It can not be redeclared here
+   ╰────
+
+  × Duplicated export 'foo'
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring7/input.js:1:15]
+ 1 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── Export has already been declared here
+ 2 │ export const { foo } = bar2;
+   ·                ─┬─
+   ·                 ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring7/input.js:1:15]
+ 1 │ export const [foo] = bar;
+   ·               ─┬─
+   ·                ╰── `foo` has already been declared here
+ 2 │ export const { foo } = bar2;
    ·                ─┬─
    ·                 ╰── It can not be redeclared here
    ╰────
@@ -3455,13 +3439,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `Foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring9/input.js:1:14]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring8/input.js:1:14]
  1 │ export class Foo {};
    ·              ─┬─
    ·               ╰── `Foo` has already been declared here
- 2 │ export const [Foo] = bar;
-   ·               ─┬─
-   ·                ╰── It can not be redeclared here
+ 2 │ export const { Foo } = bar;
+   ·                ─┬─
+   ·                 ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'Foo'
@@ -3472,6 +3456,16 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  2 │ export const [Foo] = bar;
    ·               ─┬─
    ·                ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `Foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2015/modules/duplicate-named-export-destructuring9/input.js:1:14]
+ 1 │ export class Foo {};
+   ·              ─┬─
+   ·               ╰── `Foo` has already been declared here
+ 2 │ export const [Foo] = bar;
+   ·               ─┬─
+   ·                ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo'
@@ -5375,12 +5369,11 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·       ╰── `)` expected
    ╰────
 
-  × Expected `(` but found `await`
+  × `await` is only allowed within async functions and at the top levels of modules
    ╭─[babel/packages/babel-parser/test/fixtures/es2018/async-generators/for-await-async-context/input.js:2:7]
  1 │ function f() {
  2 │   for await (let x of y);
-   ·       ──┬──
-   ·         ╰── `(` expected
+   ·       ─────
  3 │ }
    ╰────
 
@@ -5432,16 +5425,6 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ }
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/11/input.js:1:14]
- 1 │ export const foo = 1;
-   ·              ─┬─
-   ·               ╰── `foo` has already been declared here
- 2 │ export const { bar, ...foo } = baz;
-   ·                        ─┬─
-   ·                         ╰── It can not be redeclared here
-   ╰────
-
   × Duplicated export 'foo'
    ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/11/input.js:1:14]
  1 │ export const foo = 1;
@@ -5452,14 +5435,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                         ╰── It cannot be redeclared here
    ╰────
 
-  × Identifier `bar` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/12/input.js:1:24]
- 1 │ export const { foo, ...bar } = baz;
-   ·                        ─┬─
-   ·                         ╰── `bar` has already been declared here
- 2 │ export const bar = 1;
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/11/input.js:1:14]
+ 1 │ export const foo = 1;
    ·              ─┬─
-   ·               ╰── It can not be redeclared here
+   ·               ╰── `foo` has already been declared here
+ 2 │ export const { bar, ...foo } = baz;
+   ·                        ─┬─
+   ·                         ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'bar'
@@ -5472,14 +5455,14 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·               ╰── It cannot be redeclared here
    ╰────
 
-  × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/13/input.js:1:14]
- 1 │ export const foo = 1;
+  × Identifier `bar` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/12/input.js:1:24]
+ 1 │ export const { foo, ...bar } = baz;
+   ·                        ─┬─
+   ·                         ╰── `bar` has already been declared here
+ 2 │ export const bar = 1;
    ·              ─┬─
-   ·               ╰── `foo` has already been declared here
- 2 │ export const { bar: { baz, ...foo } } = qux;
-   ·                               ─┬─
-   ·                                ╰── It can not be redeclared here
+   ·               ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo'
@@ -5493,13 +5476,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/14/input.js:1:14]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/13/input.js:1:14]
  1 │ export const foo = 1;
    ·              ─┬─
    ·               ╰── `foo` has already been declared here
- 2 │ export const [bar, { baz, ...foo }] = qux;
-   ·                              ─┬─
-   ·                               ╰── It can not be redeclared here
+ 2 │ export const { bar: { baz, ...foo } } = qux;
+   ·                               ─┬─
+   ·                                ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo'
@@ -5513,13 +5496,13 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
 
   × Identifier `foo` has already been declared
-   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/15/input.js:1:14]
+   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/14/input.js:1:14]
  1 │ export const foo = 1;
    ·              ─┬─
    ·               ╰── `foo` has already been declared here
- 2 │ export const [bar, [{ baz, ...foo }]] = qux;
-   ·                               ─┬─
-   ·                                ╰── It can not be redeclared here
+ 2 │ export const [bar, { baz, ...foo }] = qux;
+   ·                              ─┬─
+   ·                               ╰── It can not be redeclared here
    ╰────
 
   × Duplicated export 'foo'
@@ -5530,6 +5513,16 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  2 │ export const [bar, [{ baz, ...foo }]] = qux;
    ·                               ─┬─
    ·                                ╰── It cannot be redeclared here
+   ╰────
+
+  × Identifier `foo` has already been declared
+   ╭─[babel/packages/babel-parser/test/fixtures/es2018/object-rest-spread/15/input.js:1:14]
+ 1 │ export const foo = 1;
+   ·              ─┬─
+   ·               ╰── `foo` has already been declared here
+ 2 │ export const [bar, [{ baz, ...foo }]] = qux;
+   ·                               ─┬─
+   ·                                ╰── It can not be redeclared here
    ╰────
 
   × Invalid rest element
@@ -5687,10 +5680,10 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                           ╰── `)` expected
    ╰────
 
-  × Unexpected token
-   ╭─[babel/packages/babel-parser/test/fixtures/es2020/dynamic-import/no-args/input.js:1:8]
+  × import() requires a specifier.
+   ╭─[babel/packages/babel-parser/test/fixtures/es2020/dynamic-import/no-args/input.js:1:1]
  1 │ import();
-   ·        ─
+   · ────────
    ╰────
 
   × The only valid meta property for import is import.meta
@@ -5726,10 +5719,10 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·                           ╰── `)` expected
    ╰────
 
-  × Unexpected token
-   ╭─[babel/packages/babel-parser/test/fixtures/es2020/dynamic-import-createImportExpression-false/no-args/input.js:1:8]
+  × import() requires a specifier.
+   ╭─[babel/packages/babel-parser/test/fixtures/es2020/dynamic-import-createImportExpression-false/no-args/input.js:1:1]
  1 │ import();
-   ·        ─
+   · ────────
    ╰────
 
   × Unexpected import.meta expression
@@ -7873,7 +7866,15 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  4 │ }
    ╰────
 
-  × Private fields can not be deleted
+  × The operand of a 'delete' operator cannot be a private identifier.
+   ╭─[babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/failure-delete-optional-private-property/input.js:4:18]
+ 3 │   constructor() {
+ 4 │     delete this?.#x;
+   ·                  ──
+ 5 │   }
+   ╰────
+
+  × The operand of a 'delete' operator cannot be a private identifier.
    ╭─[babel/packages/babel-parser/test/fixtures/es2022/class-private-properties/failure-delete-private-property/input.js:4:12]
  3 │   constructor() {
  4 │     delete this.#x;
@@ -8232,18 +8233,6 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ╰────
   help: Did you mean `export { "吾道一以貫之。" as "忠恕。" } from 'some-module'`?
 
-  × Export '學而時習之，不亦說乎？' is not defined
-   ╭─[babel/packages/babel-parser/test/fixtures/es2022/module-string-names/string-exported-binding-without-from/input.js:1:10]
- 1 │ export { "學而時習之，不亦說乎？", "吾道一以貫之。" as "忠恕。" };
-   ·          ────────────────────────
-   ╰────
-
-  × Export '吾道一以貫之。' is not defined
-   ╭─[babel/packages/babel-parser/test/fixtures/es2022/module-string-names/string-exported-binding-without-from/input.js:1:47]
- 1 │ export { "學而時習之，不亦說乎？", "吾道一以貫之。" as "忠恕。" };
-   ·                                    ────────────────
-   ╰────
-
   × Unexpected token
    ╭─[babel/packages/babel-parser/test/fixtures/es2022/private-in/invalid-private-followed-by-in-1/input.js:5:11]
  4 │   method() {
@@ -8326,11 +8315,10 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
  3 │ }
    ╰────
 
-  × Expected `(` but found `await`
+  × `await` is only allowed within async functions and at the top levels of modules
    ╭─[babel/packages/babel-parser/test/fixtures/es2022/top-level-await-script/for-await/input.js:1:5]
  1 │ for await (const a of b);
-   ·     ──┬──
-   ·       ╰── `(` expected
+   ·     ─────
    ╰────
 
   × `await` is only allowed within async functions and at the top levels of modules
@@ -8941,10 +8929,10 @@ Expect to Parse: tasks/coverage/babel/packages/babel-parser/test/fixtures/typesc
    ·      ─────────
    ╰────
 
-  × Unexpected token
-   ╭─[babel/packages/babel-parser/test/fixtures/esprima/es2015-meta-property/invalid-dots/input.js:1:30]
+  × The only valid meta property for new is new.target
+   ╭─[babel/packages/babel-parser/test/fixtures/esprima/es2015-meta-property/invalid-dots/input.js:1:26]
  1 │ var x = function() { y = new..target; }
-   ·                              ─
+   ·                          ─────
    ╰────
 
   × Unexpected new.target expression

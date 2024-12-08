@@ -4,7 +4,10 @@ use oxc_ast::{ast::*, AstKind};
 use oxc_semantic::{NodeId, Semantic};
 
 use super::{options::ArgsOption, NoUnusedVars, Symbol};
-use crate::rules::eslint::no_unused_vars::binding_pattern::{BindingContext, HasAnyUsedBinding};
+use crate::{
+    rules::eslint::no_unused_vars::binding_pattern::{BindingContext, HasAnyUsedBinding},
+    ModuleRecord,
+};
 
 impl Symbol<'_, '_> {
     /// Check if the declaration of this [`Symbol`] is use.
@@ -120,6 +123,7 @@ impl NoUnusedVars {
     pub(super) fn is_allowed_argument<'a>(
         &self,
         semantic: &Semantic<'a>,
+        module_record: &ModuleRecord,
         symbol: &Symbol<'_, 'a>,
         param: &FormalParameter<'a>,
     ) -> bool {
@@ -178,7 +182,7 @@ impl NoUnusedVars {
             return false;
         }
 
-        let ctx = BindingContext { options: self, semantic };
+        let ctx = BindingContext { options: self, semantic, module_record };
         params
             .items
             .iter()

@@ -125,11 +125,14 @@
 //!
 //! Implementation is split into several files:
 //!
-//! * `mod.rs`:         Setup, visitor and ancillary types.
-//! * `class.rs`:       Transform of class body.
-//! * `constructor.rs`: Insertion of property initializers into class constructor.
-//! * `private.rs`:     Transform of private property usages (`this.#prop`).
-//! * `utils.rs`:       Utility functions.
+//! * `mod.rs`:            Setup and visitor.
+//! * `class.rs`:          Transform of class body.
+//! * `constructor.rs`:    Insertion of property initializers into class constructor.
+//! * `private.rs`:        Transform of private property usages (`this.#prop`).
+//! * `private_props.rs`:  Structures storing details of private properties.
+//! * `static_prop.rs`:    Transform of static property initializers.
+//! * `class_bindings.rs`: Structure containing bindings for class name and temp var.
+//! * `utils.rs`:          Utility functions.
 //!
 //! ## References
 //!
@@ -145,24 +148,27 @@ use serde::Deserialize;
 
 use oxc_allocator::{Address, GetAddress};
 use oxc_ast::ast::*;
-use oxc_data_structures::stack::{NonEmptyStack, SparseStack};
-use oxc_traverse::{BoundIdentifier, Traverse, TraverseCtx};
+use oxc_data_structures::stack::NonEmptyStack;
+use oxc_traverse::{Traverse, TraverseCtx};
 
 use crate::TransformCtx;
 
 mod class;
+mod class_bindings;
 mod constructor;
 mod private;
+mod private_props;
 mod static_prop;
 mod utils;
+use class_bindings::ClassBindings;
+use private_props::PrivatePropsStack;
 
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
 #[derive(Debug, Default, Clone, Copy, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ClassPropertiesOptions {
-    #[serde(alias = "loose")]
-    pub(crate) set_public_class_fields: bool,
+    pub(crate) loose: bool,
 }
 
 /// Class properties transform.
@@ -191,7 +197,7 @@ pub struct ClassProperties<'a, 'ctx> {
     // then stack will get out of sync.
     // TODO: Should push to the stack only when entering class body, because `#x` in class `extends`
     // clause resolves to `#x` in *outer* class, not the current class.
-    private_props_stack: SparseStack<PrivateProps<'a>>,
+    private_props_stack: PrivatePropsStack<'a>,
     /// Addresses of class expressions being processed, to prevent same class being visited twice.
     /// Have to use a stack because the revisit doesn't necessarily happen straight after the first visit.
     /// e.g. `c = class C { [class D {}] = 1; }` -> `c = (_D = class D {}, class C { ... })`
@@ -201,42 +207,16 @@ pub struct ClassProperties<'a, 'ctx> {
     //
     /// `true` for class declaration, `false` for class expression
     is_declaration: bool,
-    /// Var for class.
-    /// e.g. `X` in `class X {}`.
-    /// e.g. `_Class` in `_Class = class {}, _Class.x = 1, _Class`
-    class_name: ClassName<'a>,
+    /// Bindings for class name and temp var for class
+    class_bindings: ClassBindings<'a>,
+    /// `true` if temp var for class has been inserted
+    temp_var_is_created: bool,
     /// Expressions to insert before class
     insert_before: Vec<Expression<'a>>,
     /// Expressions to insert after class expression
     insert_after_exprs: Vec<Expression<'a>>,
     /// Statements to insert after class declaration
     insert_after_stmts: Vec<Statement<'a>>,
-}
-
-/// Representation of binding for class name.
-enum ClassName<'a> {
-    /// Class has a name. This is the binding.
-    Binding(BoundIdentifier<'a>),
-    /// Class is anonymous.
-    /// This is the name it would have if we need to set class name, in order to reference it.
-    Name(&'a str),
-}
-
-/// Details of private properties for a class.
-struct PrivateProps<'a> {
-    /// Private properties for class. Indexed by property name.
-    // TODO(improve-on-babel): Order that temp vars are created in is not important. Use `FxHashMap` instead.
-    props: FxIndexMap<Atom<'a>, PrivateProp<'a>>,
-    /// Binding for class name
-    class_name_binding: Option<BoundIdentifier<'a>>,
-    /// `true` for class declaration, `false` for class expression
-    is_declaration: bool,
-}
-
-/// Details of a private property.
-struct PrivateProp<'a> {
-    binding: BoundIdentifier<'a>,
-    is_static: bool,
 }
 
 impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
@@ -246,18 +226,18 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         ctx: &'ctx TransformCtx<'a>,
     ) -> Self {
         // TODO: Raise error if these 2 options are inconsistent
-        let set_public_class_fields =
-            options.set_public_class_fields || ctx.assumptions.set_public_class_fields;
+        let set_public_class_fields = options.loose || ctx.assumptions.set_public_class_fields;
 
         Self {
             set_public_class_fields,
             transform_static_blocks,
             ctx,
-            private_props_stack: SparseStack::new(),
+            private_props_stack: PrivatePropsStack::default(),
             class_expression_addresses_stack: NonEmptyStack::new(Address::DUMMY),
             // Temporary values - overwritten when entering class
             is_declaration: false,
-            class_name: ClassName::Name(""),
+            class_bindings: ClassBindings::default(),
+            temp_var_is_created: false,
             // `Vec`s and `FxHashMap`s which are reused for every class being transformed
             insert_before: vec![],
             insert_after_exprs: vec![],
@@ -270,7 +250,8 @@ impl<'a, 'ctx> Traverse<'a> for ClassProperties<'a, 'ctx> {
     // `#[inline]` because this is a hot path
     #[inline]
     fn enter_expression(&mut self, expr: &mut Expression<'a>, ctx: &mut TraverseCtx<'a>) {
-        // Note: `delete this.#prop` is an early syntax error, so no need to handle transforming it
+        // IMPORTANT: If add any other visitors here to handle private fields,
+        // also need to add them to visitor in `static_prop.rs`.
         match expr {
             // `class {}`
             Expression::ClassExpression(_) => {
@@ -294,12 +275,14 @@ impl<'a, 'ctx> Traverse<'a> for ClassProperties<'a, 'ctx> {
             }
             // `object?.#prop`
             Expression::ChainExpression(_) => {
-                // TODO: `transform_chain_expression` is no-op at present
                 self.transform_chain_expression(expr, ctx);
+            }
+            // `delete object?.#prop.xyz`
+            Expression::UnaryExpression(_) => {
+                self.transform_unary_expression(expr, ctx);
             }
             // "object.#prop`xyz`"
             Expression::TaggedTemplateExpression(_) => {
-                // TODO: `transform_tagged_template_expression` is no-op at present
                 self.transform_tagged_template_expression(expr, ctx);
             }
             _ => {}
@@ -337,7 +320,7 @@ impl<'a, 'ctx> Traverse<'a> for ClassProperties<'a, 'ctx> {
                 let stmt_address = decl.address();
                 if let ExportDefaultDeclarationKind::ClassDeclaration(class) = &mut decl.declaration
                 {
-                    self.transform_class_export_default(class, stmt_address, ctx);
+                    self.transform_class_declaration(class, stmt_address, ctx);
                 }
             }
             _ => {}

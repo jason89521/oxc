@@ -1,16 +1,13 @@
+use oxc_allocator::Vec;
 use oxc_ast::ast::*;
 
-use crate::{
-    group,
-    ir::{Doc, DocBuilder},
-    text, Format, Prettier,
-};
+use crate::{array, group, ir::Doc, text, Format, Prettier};
 
 pub(super) fn print_arrow_function<'a>(
     p: &mut Prettier<'a>,
     expr: &ArrowFunctionExpression<'a>,
 ) -> Doc<'a> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     if !p.options.semi && p.options.arrow_parens.is_always() {
         parts.push(text!(";"));
@@ -24,8 +21,8 @@ pub(super) fn print_arrow_function<'a>(
         parts.push(type_params.format(p));
     }
 
-    let parameters = expr.params.format(p);
-    parts.push(group!(p, parameters));
+    let params_doc = expr.params.format(p);
+    parts.push(group!(p, [params_doc]));
 
     if let Some(return_type) = &expr.return_type {
         parts.push(text!(": "));
@@ -46,5 +43,5 @@ pub(super) fn print_arrow_function<'a>(
         parts.push(expr.body.format(p));
     }
 
-    Doc::Array(parts)
+    array!(p, parts)
 }

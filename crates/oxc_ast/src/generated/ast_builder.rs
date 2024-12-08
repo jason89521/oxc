@@ -80,17 +80,14 @@ impl<'a> AstBuilder<'a> {
     /// - raw: The number as it appears in source code
     /// - base: The base representation used by the literal in source code
     #[inline]
-    pub fn numeric_literal<S>(
+    pub fn numeric_literal(
         self,
         span: Span,
         value: f64,
-        raw: S,
+        raw: Option<Atom<'a>>,
         base: NumberBase,
-    ) -> NumericLiteral<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
-        NumericLiteral { span, value, raw: raw.into_in(self.allocator), base }
+    ) -> NumericLiteral<'a> {
+        NumericLiteral { span, value, raw, base }
     }
 
     /// Build a [`NumericLiteral`], and store it in the memory arena.
@@ -103,16 +100,13 @@ impl<'a> AstBuilder<'a> {
     /// - raw: The number as it appears in source code
     /// - base: The base representation used by the literal in source code
     #[inline]
-    pub fn alloc_numeric_literal<S>(
+    pub fn alloc_numeric_literal(
         self,
         span: Span,
         value: f64,
-        raw: S,
+        raw: Option<Atom<'a>>,
         base: NumberBase,
-    ) -> Box<'a, NumericLiteral<'a>>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+    ) -> Box<'a, NumericLiteral<'a>> {
         Box::new_in(self.numeric_literal(span, value, raw, base), self.allocator)
     }
 
@@ -199,11 +193,13 @@ impl<'a> AstBuilder<'a> {
     /// - regex: The parsed regular expression. See [`oxc_regular_expression`] for more
     /// - raw: The regular expression as it appears in source code
     #[inline]
-    pub fn reg_exp_literal<S>(self, span: Span, regex: RegExp<'a>, raw: S) -> RegExpLiteral<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
-        RegExpLiteral { span, regex, raw: raw.into_in(self.allocator) }
+    pub fn reg_exp_literal(
+        self,
+        span: Span,
+        regex: RegExp<'a>,
+        raw: Option<Atom<'a>>,
+    ) -> RegExpLiteral<'a> {
+        RegExpLiteral { span, regex, raw }
     }
 
     /// Build a [`RegExpLiteral`], and store it in the memory arena.
@@ -215,15 +211,12 @@ impl<'a> AstBuilder<'a> {
     /// - regex: The parsed regular expression. See [`oxc_regular_expression`] for more
     /// - raw: The regular expression as it appears in source code
     #[inline]
-    pub fn alloc_reg_exp_literal<S>(
+    pub fn alloc_reg_exp_literal(
         self,
         span: Span,
         regex: RegExp<'a>,
-        raw: S,
-    ) -> Box<'a, RegExpLiteral<'a>>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+        raw: Option<Atom<'a>>,
+    ) -> Box<'a, RegExpLiteral<'a>> {
         Box::new_in(self.reg_exp_literal(span, regex, raw), self.allocator)
     }
 
@@ -413,16 +406,13 @@ impl<'a> AstBuilder<'a> {
     /// - raw: The number as it appears in source code
     /// - base: The base representation used by the literal in source code
     #[inline]
-    pub fn expression_numeric_literal<S>(
+    pub fn expression_numeric_literal(
         self,
         span: Span,
         value: f64,
-        raw: S,
+        raw: Option<Atom<'a>>,
         base: NumberBase,
-    ) -> Expression<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+    ) -> Expression<'a> {
         Expression::NumericLiteral(self.alloc(self.numeric_literal(span, value, raw, base)))
     }
 
@@ -456,15 +446,12 @@ impl<'a> AstBuilder<'a> {
     /// - regex: The parsed regular expression. See [`oxc_regular_expression`] for more
     /// - raw: The regular expression as it appears in source code
     #[inline]
-    pub fn expression_reg_exp_literal<S>(
+    pub fn expression_reg_exp_literal(
         self,
         span: Span,
         regex: RegExp<'a>,
-        raw: S,
-    ) -> Expression<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+        raw: Option<Atom<'a>>,
+    ) -> Expression<'a> {
         Expression::RegExpLiteral(self.alloc(self.reg_exp_literal(span, regex, raw)))
     }
 
@@ -846,14 +833,18 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - source
     /// - arguments
+    /// - phase
     #[inline]
     pub fn expression_import(
         self,
         span: Span,
         source: Expression<'a>,
         arguments: Vec<'a, Expression<'a>>,
+        phase: Option<ImportPhase>,
     ) -> Expression<'a> {
-        Expression::ImportExpression(self.alloc(self.import_expression(span, source, arguments)))
+        Expression::ImportExpression(
+            self.alloc(self.import_expression(span, source, arguments, phase)),
+        )
     }
 
     /// Build an [`Expression::LogicalExpression`]
@@ -6600,6 +6591,7 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - specifiers: `None` for `import 'foo'`, `Some([])` for `import {} from 'foo'`
     /// - source
+    /// - phase
     /// - with_clause: Some(vec![]) for empty assertion
     /// - import_kind: `import type { foo } from 'bar'`
     #[inline]
@@ -6608,6 +6600,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         specifiers: Option<Vec<'a, ImportDeclarationSpecifier<'a>>>,
         source: StringLiteral<'a>,
+        phase: Option<ImportPhase>,
         with_clause: T1,
         import_kind: ImportOrExportKind,
     ) -> ModuleDeclaration<'a>
@@ -6618,6 +6611,7 @@ impl<'a> AstBuilder<'a> {
             span,
             specifiers,
             source,
+            phase,
             with_clause,
             import_kind,
         )))
@@ -6849,14 +6843,16 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - source
     /// - arguments
+    /// - phase
     #[inline]
     pub fn import_expression(
         self,
         span: Span,
         source: Expression<'a>,
         arguments: Vec<'a, Expression<'a>>,
+        phase: Option<ImportPhase>,
     ) -> ImportExpression<'a> {
-        ImportExpression { span, source, arguments }
+        ImportExpression { span, source, arguments, phase }
     }
 
     /// Build an [`ImportExpression`], and store it in the memory arena.
@@ -6867,14 +6863,16 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - source
     /// - arguments
+    /// - phase
     #[inline]
     pub fn alloc_import_expression(
         self,
         span: Span,
         source: Expression<'a>,
         arguments: Vec<'a, Expression<'a>>,
+        phase: Option<ImportPhase>,
     ) -> Box<'a, ImportExpression<'a>> {
-        Box::new_in(self.import_expression(span, source, arguments), self.allocator)
+        Box::new_in(self.import_expression(span, source, arguments, phase), self.allocator)
     }
 
     /// Build an [`ImportDeclaration`].
@@ -6885,6 +6883,7 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - specifiers: `None` for `import 'foo'`, `Some([])` for `import {} from 'foo'`
     /// - source
+    /// - phase
     /// - with_clause: Some(vec![]) for empty assertion
     /// - import_kind: `import type { foo } from 'bar'`
     #[inline]
@@ -6893,6 +6892,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         specifiers: Option<Vec<'a, ImportDeclarationSpecifier<'a>>>,
         source: StringLiteral<'a>,
+        phase: Option<ImportPhase>,
         with_clause: T1,
         import_kind: ImportOrExportKind,
     ) -> ImportDeclaration<'a>
@@ -6903,6 +6903,7 @@ impl<'a> AstBuilder<'a> {
             span,
             specifiers,
             source,
+            phase,
             with_clause: with_clause.into_in(self.allocator),
             import_kind,
         }
@@ -6916,6 +6917,7 @@ impl<'a> AstBuilder<'a> {
     /// - span: The [`Span`] covering this node
     /// - specifiers: `None` for `import 'foo'`, `Some([])` for `import {} from 'foo'`
     /// - source
+    /// - phase
     /// - with_clause: Some(vec![]) for empty assertion
     /// - import_kind: `import type { foo } from 'bar'`
     #[inline]
@@ -6924,6 +6926,7 @@ impl<'a> AstBuilder<'a> {
         span: Span,
         specifiers: Option<Vec<'a, ImportDeclarationSpecifier<'a>>>,
         source: StringLiteral<'a>,
+        phase: Option<ImportPhase>,
         with_clause: T1,
         import_kind: ImportOrExportKind,
     ) -> Box<'a, ImportDeclaration<'a>>
@@ -6931,7 +6934,7 @@ impl<'a> AstBuilder<'a> {
         T1: IntoIn<'a, Option<Box<'a, WithClause<'a>>>>,
     {
         Box::new_in(
-            self.import_declaration(span, specifiers, source, with_clause, import_kind),
+            self.import_declaration(span, specifiers, source, phase, with_clause, import_kind),
             self.allocator,
         )
     }
@@ -7911,16 +7914,13 @@ impl<'a> AstBuilder<'a> {
     /// - raw: The number as it appears in source code
     /// - base: The base representation used by the literal in source code
     #[inline]
-    pub fn ts_literal_numeric_literal<S>(
+    pub fn ts_literal_numeric_literal(
         self,
         span: Span,
         value: f64,
-        raw: S,
+        raw: Option<Atom<'a>>,
         base: NumberBase,
-    ) -> TSLiteral<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+    ) -> TSLiteral<'a> {
         TSLiteral::NumericLiteral(self.alloc(self.numeric_literal(span, value, raw, base)))
     }
 
@@ -7954,15 +7954,12 @@ impl<'a> AstBuilder<'a> {
     /// - regex: The parsed regular expression. See [`oxc_regular_expression`] for more
     /// - raw: The regular expression as it appears in source code
     #[inline]
-    pub fn ts_literal_reg_exp_literal<S>(
+    pub fn ts_literal_reg_exp_literal(
         self,
         span: Span,
         regex: RegExp<'a>,
-        raw: S,
-    ) -> TSLiteral<'a>
-    where
-        S: IntoIn<'a, &'a str>,
-    {
+        raw: Option<Atom<'a>>,
+    ) -> TSLiteral<'a> {
         TSLiteral::RegExpLiteral(self.alloc(self.reg_exp_literal(span, regex, raw)))
     }
 

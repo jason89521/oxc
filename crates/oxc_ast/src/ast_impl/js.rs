@@ -135,7 +135,7 @@ impl<'a> Expression<'a> {
 
     /// Determines whether the given numeral literal's raw value is exactly val
     pub fn is_specific_raw_number_literal(&self, val: &str) -> bool {
-        matches!(self, Self::NumericLiteral(lit) if lit.raw == val)
+        matches!(self, Self::NumericLiteral(lit) if lit.raw.as_ref().is_some_and(|raw| raw == val))
     }
 
     /// Determines whether the given expr evaluate to `undefined`
@@ -502,6 +502,7 @@ impl<'a> ComputedMemberExpression<'a> {
             {
                 Some(lit.quasis[0].value.raw.clone())
             }
+            Expression::RegExpLiteral(lit) => lit.raw.clone(),
             _ => None,
         }
     }
@@ -1474,6 +1475,16 @@ impl<'a> ModuleExportName<'a> {
             Self::IdentifierName(identifier) => Some(identifier.name.clone()),
             Self::IdentifierReference(identifier) => Some(identifier.name.clone()),
             Self::StringLiteral(_) => None,
+        }
+    }
+}
+
+impl ImportPhase {
+    #[allow(missing_docs)]
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Source => "source",
+            Self::Defer => "defer",
         }
     }
 }

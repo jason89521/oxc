@@ -7,6 +7,7 @@ use oxc_ast::{
     AstKind,
 };
 use oxc_semantic::AstNode;
+use oxc_span::cmp::ContentEq;
 use oxc_syntax::operator::LogicalOperator;
 
 pub use self::boolean::*;
@@ -147,7 +148,8 @@ pub fn get_return_identifier_name<'a>(body: &'a FunctionBody<'_>) -> Option<&'a 
     }
 }
 
-pub fn is_same_reference(left: &Expression, right: &Expression, ctx: &LintContext) -> bool {
+/// Compares two expressions to see if they are the same.
+pub fn is_same_expression(left: &Expression, right: &Expression, ctx: &LintContext) -> bool {
     if let Expression::ChainExpression(left_chain_expr) = left {
         if let Some(right_member_expr) = right.as_member_expression() {
             if let Some(v) = left_chain_expr.expression.as_member_expression() {
@@ -177,6 +179,20 @@ pub fn is_same_reference(left: &Expression, right: &Expression, ctx: &LintContex
         (Expression::StringLiteral(left_str), Expression::StringLiteral(right_str)) => {
             return left_str.value == right_str.value;
         }
+        (Expression::StringLiteral(string_lit), Expression::TemplateLiteral(template_lit))
+        | (Expression::TemplateLiteral(template_lit), Expression::StringLiteral(string_lit)) => {
+            return template_lit.is_no_substitution_template()
+                && string_lit.value == template_lit.quasi().unwrap();
+        }
+        (Expression::TemplateLiteral(left_str), Expression::TemplateLiteral(right_str)) => {
+            return left_str.quasis.content_eq(&right_str.quasis)
+                && left_str.expressions.len() == right_str.expressions.len()
+                && left_str
+                    .expressions
+                    .iter()
+                    .zip(right_str.expressions.iter())
+                    .all(|(left, right)| is_same_expression(left, right, ctx));
+        }
         (Expression::NumericLiteral(left_num), Expression::NumericLiteral(right_num)) => {
             return left_num.raw == right_num.raw;
         }
@@ -187,6 +203,35 @@ pub fn is_same_reference(left: &Expression, right: &Expression, ctx: &LintContex
         }
         (Expression::BooleanLiteral(left_bool), Expression::BooleanLiteral(right_bool)) => {
             return left_bool.value == right_bool.value;
+        }
+
+        (
+            Expression::BinaryExpression(left_bin_expr),
+            Expression::BinaryExpression(right_bin_expr),
+        ) => {
+            return left_bin_expr.operator == right_bin_expr.operator
+                && is_same_expression(
+                    left_bin_expr.left.get_inner_expression(),
+                    right_bin_expr.left.get_inner_expression(),
+                    ctx,
+                )
+                && is_same_expression(
+                    left_bin_expr.right.get_inner_expression(),
+                    right_bin_expr.right.get_inner_expression(),
+                    ctx,
+                );
+        }
+
+        (
+            Expression::UnaryExpression(left_unary_expr),
+            Expression::UnaryExpression(right_unary_expr),
+        ) => {
+            return left_unary_expr.operator == right_unary_expr.operator
+                && is_same_expression(
+                    left_unary_expr.argument.get_inner_expression(),
+                    right_unary_expr.argument.get_inner_expression(),
+                    ctx,
+                );
         }
 
         (
@@ -237,16 +282,39 @@ pub fn is_same_member_expression(
         MemberExpression::ComputedMemberExpression(right),
     ) = (left, right)
     {
-        if !is_same_reference(
-            left.expression.get_inner_expression(),
-            right.expression.get_inner_expression(),
-            ctx,
-        ) {
-            return false;
+        // TODO(camc314): refactor this to go through `is_same_reference` and introduce some sort of `context` to indicate how the two values should be compared.
+        match (&left.expression, &right.expression) {
+            // x['/regex/'] === x[/regex/]
+            // x[/regex/] === x['/regex/']
+            (Expression::StringLiteral(string_lit), Expression::RegExpLiteral(regex_lit))
+            | (Expression::RegExpLiteral(regex_lit), Expression::StringLiteral(string_lit)) => {
+                if string_lit.value != regex_lit.raw.as_ref().unwrap() {
+                    return false;
+                }
+            }
+            // ex) x[`/regex/`] === x[/regex/]
+            // ex) x[/regex/] === x[`/regex/`]
+            (Expression::TemplateLiteral(template_lit), Expression::RegExpLiteral(regex_lit))
+            | (Expression::RegExpLiteral(regex_lit), Expression::TemplateLiteral(template_lit)) => {
+                if !(template_lit.is_no_substitution_template()
+                    && template_lit.quasi().unwrap() == regex_lit.raw.as_ref().unwrap())
+                {
+                    return false;
+                }
+            }
+            _ => {
+                if !is_same_expression(
+                    left.expression.get_inner_expression(),
+                    right.expression.get_inner_expression(),
+                    ctx,
+                ) {
+                    return false;
+                }
+            }
         }
     }
 
-    is_same_reference(
+    is_same_expression(
         left.object().get_inner_expression(),
         right.object().get_inner_expression(),
         ctx,

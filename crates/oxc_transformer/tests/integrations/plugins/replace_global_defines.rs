@@ -60,6 +60,36 @@ fn dot() {
 }
 
 #[test]
+fn dot_with_overlap() {
+    let config = ReplaceGlobalDefinesConfig::new(&[
+        ("import.meta.env.FOO", "import.meta.env.FOO"),
+        ("import.meta.env", "__foo__"),
+    ])
+    .unwrap();
+    test("import.meta.env", "__foo__", config.clone());
+    test("import.meta.env.FOO", "import.meta.env.FOO", config.clone());
+    test("import.meta.env.NODE_ENV", "__foo__.NODE_ENV", config.clone());
+
+    test("import.meta.env = 0", "__foo__ = 0", config.clone());
+    test("import.meta.env.NODE_ENV = 0", "__foo__.NODE_ENV = 0", config.clone());
+    test("import.meta.env.FOO = 0", "import.meta.env.FOO = 0", config.clone());
+}
+
+#[test]
+fn dot_define_is_member_expr_postfix() {
+    let config = ReplaceGlobalDefinesConfig::new(&[
+        ("__OBJ__", r#"{"process":{"env":{"SOMEVAR":"foo"}}}"#),
+        ("process.env.SOMEVAR", "\"SOMEVAR\""),
+    ])
+    .unwrap();
+    test(
+        "console.log(__OBJ__.process.env.SOMEVAR)",
+        "console.log({ 'process': { 'env': { 'SOMEVAR': 'foo' } } }.process.env.SOMEVAR);\n",
+        config.clone(),
+    );
+}
+
+#[test]
 fn dot_nested() {
     let config = ReplaceGlobalDefinesConfig::new(&[("process", "production")]).unwrap();
     test("foo.process.NODE_ENV", "foo.process.NODE_ENV", config.clone());

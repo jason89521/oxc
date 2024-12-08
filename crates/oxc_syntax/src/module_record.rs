@@ -1,13 +1,9 @@
 //! [ECMAScript Module Record](https://tc39.es/ecma262/#sec-abstract-module-records)
-#![allow(missing_docs)] // fixme
 
-use std::{fmt, path::PathBuf, sync::Arc};
+use oxc_allocator::{Allocator, Vec};
+use oxc_span::{Atom, Span};
 
-use dashmap::DashMap;
-use oxc_span::{CompactStr, Span};
-use rustc_hash::{FxBuildHasher, FxHashMap};
-
-type FxDashMap<K, V> = DashMap<K, V, FxBuildHasher>;
+use rustc_hash::FxHashMap;
 
 /// ESM Module Record
 ///
@@ -16,13 +12,10 @@ type FxDashMap<K, V> = DashMap<K, V, FxBuildHasher>;
 /// See
 /// * <https://tc39.es/ecma262/#table-additional-fields-of-source-text-module-records>
 /// * <https://tc39.es/ecma262/#cyclic-module-record>
-#[derive(Default)]
-pub struct ModuleRecord {
-    /// This module has no import / export statements
-    pub not_esm: bool,
-
-    /// Resolved absolute path to this module record
-    pub resolved_absolute_path: PathBuf,
+#[derive(Debug)]
+pub struct ModuleRecord<'a> {
+    /// This module has ESM syntax: `import` and `export`.
+    pub has_module_syntax: bool,
 
     /// `[[RequestedModules]]`
     ///
@@ -32,113 +25,72 @@ pub struct ModuleRecord {
     ///   import ImportClause FromClause
     ///   import ModuleSpecifier
     ///   export ExportFromClause FromClause
+    ///
     /// Keyed by ModuleSpecifier, valued by all node occurrences
-    pub requested_modules: FxHashMap<CompactStr, Vec<RequestedModule>>,
-
-    /// `[[LoadedModules]]`
-    ///
-    /// A map from the specifier strings used by the module represented by this record to request
-    /// the importation of a module to the resolved Module Record. The list does not contain two
-    /// different Records with the same `[[Specifier]]`.
-    ///
-    /// Note that Oxc does not support cross-file analysis, so this map will be empty after
-    /// [`ModuleRecord`] is created. You must link the module records yourself.
-    pub loaded_modules: FxDashMap<CompactStr, Arc<ModuleRecord>>,
+    pub requested_modules: FxHashMap<Atom<'a>, Vec<'a, RequestedModule>>,
 
     /// `[[ImportEntries]]`
     ///
     /// A List of ImportEntry records derived from the code of this module
-    pub import_entries: Vec<ImportEntry>,
+    pub import_entries: Vec<'a, ImportEntry<'a>>,
 
     /// `[[LocalExportEntries]]`
     ///
     /// A List of [`ExportEntry`] records derived from the code of this module
     /// that correspond to declarations that occur within the module
-    pub local_export_entries: Vec<ExportEntry>,
+    pub local_export_entries: Vec<'a, ExportEntry<'a>>,
 
     /// `[[IndirectExportEntries]]`
     ///
     /// A List of [`ExportEntry`] records derived from the code of this module
     /// that correspond to reexported imports that occur within the module
     /// or exports from `export * as namespace` declarations.
-    pub indirect_export_entries: Vec<ExportEntry>,
+    pub indirect_export_entries: Vec<'a, ExportEntry<'a>>,
 
     /// `[[StarExportEntries]]`
     ///
     /// A List of [`ExportEntry`] records derived from the code of this module
     /// that correspond to `export *` declarations that occur within the module,
     /// not including `export * as namespace` declarations.
-    pub star_export_entries: Vec<ExportEntry>,
+    pub star_export_entries: Vec<'a, ExportEntry<'a>>,
 
     /// Local exported bindings
-    pub exported_bindings: FxHashMap<CompactStr, Span>,
+    pub exported_bindings: FxHashMap<Atom<'a>, Span>,
 
-    /// Local duplicated exported bindings, for diagnostics
-    pub exported_bindings_duplicated: Vec<NameSpan>,
-
-    /// Reexported bindings from `export * from 'specifier'`
-    /// Keyed by resolved path
-    pub exported_bindings_from_star_export: FxDashMap<PathBuf, Vec<CompactStr>>,
-
-    /// `export default name`
-    ///         ^^^^^^^ span
-    pub export_default: Option<Span>,
-
-    /// Duplicated span of `export default` for diagnostics
-    pub export_default_duplicated: Vec<Span>,
+    /// Span position of `import.meta`.
+    pub import_metas: Vec<'a, Span>,
 }
 
-impl ModuleRecord {
-    pub fn new(resolved_absolute_path: PathBuf) -> Self {
-        Self { resolved_absolute_path, ..Self::default() }
+impl<'a> ModuleRecord<'a> {
+    /// Constructor
+    pub fn new(allocator: &'a Allocator) -> Self {
+        Self {
+            has_module_syntax: false,
+            requested_modules: FxHashMap::default(),
+            import_entries: Vec::new_in(allocator),
+            local_export_entries: Vec::new_in(allocator),
+            indirect_export_entries: Vec::new_in(allocator),
+            star_export_entries: Vec::new_in(allocator),
+            exported_bindings: FxHashMap::default(),
+            import_metas: Vec::new_in(allocator),
+        }
     }
 }
 
-impl fmt::Debug for ModuleRecord {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
-        // recursively formatting loaded modules can crash when the module graph is cyclic
-        let loaded_modules = self
-            .loaded_modules
-            .iter()
-            .map(|entry| (entry.key().to_string()))
-            .reduce(|acc, key| format!("{acc}, {key}"))
-            .unwrap_or_default();
-        let loaded_modules = format!("{{ {loaded_modules} }}");
-        f.debug_struct("ModuleRecord")
-            .field("not_esm", &self.not_esm)
-            .field("resolved_absolute_path", &self.resolved_absolute_path)
-            .field("requested_modules", &self.requested_modules)
-            .field("loaded_modules", &loaded_modules)
-            .field("import_entries", &self.import_entries)
-            .field("local_export_entries", &self.local_export_entries)
-            .field("indirect_export_entries", &self.indirect_export_entries)
-            .field("star_export_entries", &self.star_export_entries)
-            .field("exported_bindings", &self.exported_bindings)
-            .field("exported_bindings_duplicated", &self.exported_bindings_duplicated)
-            .field("exported_bindings_from_star_export", &self.exported_bindings_from_star_export)
-            .field("export_default", &self.export_default)
-            .field("export_default_duplicated", &self.export_default_duplicated)
-            .finish()
-    }
-}
-
+/// Name and Span
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NameSpan {
-    name: CompactStr,
-    span: Span,
+pub struct NameSpan<'a> {
+    /// Name
+    pub name: Atom<'a>,
+
+    /// Span
+    pub span: Span,
 }
 
-impl NameSpan {
-    pub fn new(name: CompactStr, span: Span) -> Self {
+impl<'a> NameSpan<'a> {
+    /// Constructor
+    pub fn new(name: Atom<'a>, span: Span) -> Self {
         Self { name, span }
-    }
-
-    pub const fn name(&self) -> &CompactStr {
-        &self.name
-    }
-
-    pub const fn span(&self) -> Span {
-        self.span
     }
 }
 
@@ -158,7 +110,10 @@ impl NameSpan {
 /// import * as ns from "mod";
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportEntry {
+pub struct ImportEntry<'a> {
+    /// Span of the import statement.
+    pub statement_span: Span,
+
     /// String value of the ModuleSpecifier of the ImportDeclaration.
     ///
     /// ## Examples
@@ -167,7 +122,7 @@ pub struct ImportEntry {
     /// import { foo } from "mod";
     /// //                   ^^^
     /// ```
-    pub module_request: NameSpan,
+    pub module_request: NameSpan<'a>,
 
     /// The name under which the desired binding is exported by the module identified by `[[ModuleRequest]]`.
     ///
@@ -179,7 +134,7 @@ pub struct ImportEntry {
     /// import { foo as bar } from "mod";
     /// //       ^^^
     /// ```
-    pub import_name: ImportImportName,
+    pub import_name: ImportImportName<'a>,
 
     /// The name that is used to locally access the imported value from within the importing module.
     ///
@@ -191,7 +146,7 @@ pub struct ImportEntry {
     /// import { foo as bar } from "mod";
     /// //              ^^^
     /// ```
-    pub local_name: NameSpan,
+    pub local_name: NameSpan<'a>,
 
     /// Whether this binding is for a TypeScript type-only import. This is a non-standard field.
     /// When creating a [`ModuleRecord`] for a JavaScript file, this will always be false.
@@ -214,17 +169,22 @@ pub struct ImportEntry {
 
 /// `ImportName` For `ImportEntry`
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportImportName {
-    Name(NameSpan),
+pub enum ImportImportName<'a> {
+    /// `import { x } from "mod"`
+    Name(NameSpan<'a>),
+    /// `import * as ns from "mod"`
     NamespaceObject,
+    /// `import defaultExport from "mod"`
     Default(Span),
 }
 
-impl ImportImportName {
+impl ImportImportName<'_> {
+    /// Is `default`
     pub fn is_default(&self) -> bool {
         matches!(self, Self::Default(_))
     }
 
+    /// Is namespace
     pub fn is_namespace_object(&self) -> bool {
         matches!(self, Self::NamespaceObject)
     }
@@ -250,32 +210,49 @@ impl ImportImportName {
 ///
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct ExportEntry {
+pub struct ExportEntry<'a> {
+    /// Span of the import statement.
+    pub statement_span: Span,
+
     /// Span for the entire export entry
     pub span: Span,
 
     /// The String value of the ModuleSpecifier of the ExportDeclaration.
     /// null if the ExportDeclaration does not have a ModuleSpecifier.
-    pub module_request: Option<NameSpan>,
+    pub module_request: Option<NameSpan<'a>>,
 
     /// The name under which the desired binding is exported by the module identified by `[[ModuleRequest]]`.
     /// null if the ExportDeclaration does not have a ModuleSpecifier.
     /// "all" is used for `export * as ns from "mod"`` declarations.
     /// "all-but-default" is used for `export * from "mod" declarations`.
-    pub import_name: ExportImportName,
+    pub import_name: ExportImportName<'a>,
 
     /// The name used to export this binding by this module.
-    pub export_name: ExportExportName,
+    pub export_name: ExportExportName<'a>,
 
     /// The name that is used to locally access the exported value from within the importing module.
     /// null if the exported value is not locally accessible from within the module.
-    pub local_name: ExportLocalName,
+    pub local_name: ExportLocalName<'a>,
+
+    /// Whether the export is a TypeScript `export type`.
+    ///
+    /// Examples:
+    ///
+    /// ```ts
+    /// export type * from 'mod'
+    /// export type * as ns from 'mod'
+    /// export type { foo }
+    /// export { type foo }
+    /// export type { foo } from 'mod'
+    /// ```
+    pub is_type: bool,
 }
 
 /// `ImportName` for `ExportEntry`
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum ExportImportName {
-    Name(NameSpan),
+pub enum ExportImportName<'a> {
+    /// Name
+    Name(NameSpan<'a>),
     /// all is used for export * as ns from "mod" declarations.
     All,
     /// all-but-default is used for export * from "mod" declarations.
@@ -285,11 +262,14 @@ pub enum ExportImportName {
     Null,
 }
 
-impl ExportImportName {
+/// Export Import Name
+impl ExportImportName<'_> {
+    /// Is all
     pub fn is_all(&self) -> bool {
         matches!(self, Self::All)
     }
 
+    /// Is all but default
     pub fn is_all_but_default(&self) -> bool {
         matches!(self, Self::AllButDefault)
     }
@@ -297,14 +277,17 @@ impl ExportImportName {
 
 /// `ExportName` for `ExportEntry`
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum ExportExportName {
-    Name(NameSpan),
+pub enum ExportExportName<'a> {
+    /// Name
+    Name(NameSpan<'a>),
+    /// Default
     Default(Span),
+    /// Null
     #[default]
     Null,
 }
 
-impl ExportExportName {
+impl ExportExportName<'_> {
     /// Returns `true` if this is [`ExportExportName::Default`].
     pub fn is_default(&self) -> bool {
         matches!(self, Self::Default(_))
@@ -318,24 +301,37 @@ impl ExportExportName {
     /// Attempt to get the [`Span`] of this export name.
     pub fn span(&self) -> Option<Span> {
         match self {
-            Self::Name(name) => Some(name.span()),
+            Self::Name(name) => Some(name.span),
             Self::Default(span) => Some(*span),
             Self::Null => None,
+        }
+    }
+
+    /// Get default export span
+    /// `export default foo`
+    /// `export { default }`
+    pub fn default_export_span(&self) -> Option<Span> {
+        match self {
+            Self::Default(span) => Some(*span),
+            Self::Name(name_span) if name_span.name == "default" => Some(name_span.span),
+            _ => None,
         }
     }
 }
 
 /// `LocalName` for `ExportEntry`
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum ExportLocalName {
-    Name(NameSpan),
+pub enum ExportLocalName<'a> {
+    /// Name
+    Name(NameSpan<'a>),
     /// `export default name_span`
-    Default(NameSpan),
+    Default(NameSpan<'a>),
+    /// Null
     #[default]
     Null,
 }
 
-impl ExportLocalName {
+impl<'a> ExportLocalName<'a> {
     /// `true` if this is a [`ExportLocalName::Default`].
     pub fn is_default(&self) -> bool {
         matches!(self, Self::Default(_))
@@ -347,34 +343,22 @@ impl ExportLocalName {
     }
 
     /// Get the bound name of this export. [`None`] for [`ExportLocalName::Null`].
-    pub const fn name(&self) -> Option<&CompactStr> {
+    pub fn name(&self) -> Option<&Atom<'a>> {
         match self {
-            Self::Name(name) | Self::Default(name) => Some(name.name()),
+            Self::Name(name) | Self::Default(name) => Some(&name.name),
             Self::Null => None,
         }
     }
 }
 
-pub struct FunctionMeta {
-    pub deprecated: bool,
-}
-
-#[derive(Debug, Clone)]
+/// RequestedModule
+#[derive(Debug, Clone, Copy)]
 pub struct RequestedModule {
-    span: Span,
-    is_type: bool,
-    /// is_import is true if the module is requested by an import statement.
-    is_import: bool,
-}
+    /// Span of the import statement.
+    pub statement_span: Span,
 
-impl RequestedModule {
-    pub fn new(span: Span, is_type: bool, is_import: bool) -> Self {
-        Self { span, is_type, is_import }
-    }
-
-    pub fn span(&self) -> Span {
-        self.span
-    }
+    /// Span
+    pub span: Span,
 
     /// `true` if a `type` modifier was used in the import statement.
     ///
@@ -384,14 +368,10 @@ impl RequestedModule {
     /// import { type bar } from "bar"; // false, `type` is on specifier
     /// import { baz } from "baz";      // false, no `type` modifier
     /// ```
-    pub fn is_type(&self) -> bool {
-        self.is_type
-    }
+    pub is_type: bool,
 
     /// `true` if the module is requested by an import statement.
-    pub fn is_import(&self) -> bool {
-        self.is_import
-    }
+    pub is_import: bool,
 }
 
 #[cfg(test)]

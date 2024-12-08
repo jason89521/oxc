@@ -2,12 +2,7 @@ use oxc_allocator::Vec;
 use oxc_ast::ast::Statement;
 use oxc_span::GetSpan;
 
-use super::Format;
-use crate::{
-    hardline,
-    ir::{Doc, DocBuilder},
-    Prettier,
-};
+use crate::{hardline, ir::Doc, Format, Prettier};
 
 pub(super) fn print_statement_sequence<'a>(
     p: &mut Prettier<'a>,
@@ -15,7 +10,7 @@ pub(super) fn print_statement_sequence<'a>(
     remove_last_statement_hardline: bool,
     skip_empty_statement: bool,
 ) -> Vec<'a, Doc<'a>> {
-    let mut parts = p.vec();
+    let mut parts = Vec::new_in(p.allocator);
 
     let last_statement_span =
         stmts.iter().rev().find(|s| !matches!(s, Statement::EmptyStatement(_))).map(GetSpan::span);
