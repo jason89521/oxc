@@ -68,9 +68,29 @@ impl Gen for Directive<'_> {
         // A Use Strict Directive may not contain an EscapeSequence or LineContinuation.
         // So here should print original `directive` value, the `expression` value is escaped str.
         // See https://github.com/babel/babel/blob/v7.26.2/packages/babel-generator/src/generators/base.ts#L64
-        p.wrap_quote(|p, _| {
-            p.print_str(self.directive.as_str());
-        });
+        let directive = self.directive.as_str();
+
+        let mut chars = directive.chars().peekable();
+        let mut quote = p.quote;
+        while let Some(c) = chars.next() {
+            match c {
+                '"' => {
+                    quote = b'\'';
+                    break;
+                }
+                '\'' => {
+                    quote = b'"';
+                    break;
+                }
+                '\\' => {
+                    chars.next();
+                }
+                _ => {}
+            }
+        }
+        p.print_ascii_byte(quote);
+        p.print_str(directive);
+        p.print_ascii_byte(quote);
         p.print_ascii_byte(b';');
         p.print_soft_newline();
     }
@@ -78,70 +98,149 @@ impl Gen for Directive<'_> {
 
 impl Gen for Statement<'_> {
     fn gen(&self, p: &mut Codegen, ctx: Context) {
-        p.print_statement_comments(self.span().start);
         match self {
-            Self::BlockStatement(stmt) => stmt.print(p, ctx),
-            Self::BreakStatement(stmt) => stmt.print(p, ctx),
-            Self::ContinueStatement(stmt) => stmt.print(p, ctx),
-            Self::DebuggerStatement(stmt) => stmt.print(p, ctx),
-            Self::DoWhileStatement(stmt) => stmt.print(p, ctx),
-            Self::EmptyStatement(stmt) => stmt.print(p, ctx),
-            Self::ExpressionStatement(stmt) => stmt.print(p, ctx),
-            Self::ForInStatement(stmt) => stmt.print(p, ctx),
-            Self::ForOfStatement(stmt) => stmt.print(p, ctx),
-            Self::ForStatement(stmt) => stmt.print(p, ctx),
-            Self::IfStatement(stmt) => stmt.print(p, ctx),
-            Self::LabeledStatement(stmt) => stmt.print(p, ctx),
-            Self::ReturnStatement(stmt) => stmt.print(p, ctx),
-            Self::SwitchStatement(stmt) => stmt.print(p, ctx),
-            Self::ThrowStatement(stmt) => stmt.print(p, ctx),
-            Self::TryStatement(stmt) => stmt.print(p, ctx),
-            Self::WhileStatement(stmt) => stmt.print(p, ctx),
-            Self::WithStatement(stmt) => stmt.print(p, ctx),
+            Self::BlockStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::BreakStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ContinueStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::DebuggerStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::DoWhileStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::EmptyStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ExpressionStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ForInStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ForOfStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ForStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::IfStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::LabeledStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ReturnStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::SwitchStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::ThrowStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::TryStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::WhileStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
+            Self::WithStatement(stmt) => {
+                p.print_statement_comments(stmt.span.start);
+                stmt.print(p, ctx);
+            }
 
-            Self::ImportDeclaration(decl) => decl.print(p, ctx),
-            Self::ExportAllDeclaration(decl) => decl.print(p, ctx),
-            Self::ExportDefaultDeclaration(decl) => decl.print(p, ctx),
-            Self::ExportNamedDeclaration(decl) => decl.print(p, ctx),
-            Self::TSExportAssignment(decl) => decl.print(p, ctx),
-            Self::TSNamespaceExportDeclaration(decl) => decl.print(p, ctx),
+            Self::ImportDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
+            Self::ExportAllDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
+            Self::ExportDefaultDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
+            Self::ExportNamedDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
+            Self::TSExportAssignment(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
+            Self::TSNamespaceExportDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
+                decl.print(p, ctx);
+            }
 
             Self::VariableDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_semicolon_after_statement();
             }
             Self::FunctionDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_soft_newline();
             }
             Self::ClassDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_soft_newline();
             }
             Self::TSModuleDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_soft_newline();
             }
             Self::TSTypeAliasDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_semicolon_after_statement();
             }
             Self::TSInterfaceDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_soft_newline();
             }
             Self::TSEnumDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_soft_newline();
             }
             Self::TSImportEqualsDeclaration(decl) => {
+                p.print_statement_comments(decl.span.start);
                 p.print_indent();
                 decl.print(p, ctx);
                 p.print_semicolon_after_statement();
@@ -666,7 +765,7 @@ impl Gen for Function<'_> {
 impl Gen for FunctionBody<'_> {
     fn gen(&self, p: &mut Codegen, ctx: Context) {
         let span_end = self.span.end;
-        let comments_at_end = if !p.options.minify && span_end > 0 {
+        let comments_at_end = if p.print_comments && span_end > 0 {
             p.get_statement_comments(span_end - 1)
         } else {
             None
@@ -1721,7 +1820,18 @@ impl GenExpr for UnaryExpression<'_> {
                 p.prev_op = Some(self.operator.into());
                 p.prev_op_end = p.code().len();
             }
+            // Forbid `delete Infinity`, which is syntax error in strict mode.
+            let is_delete_infinity = self.operator == UnaryOperator::Delete
+                && !p.options.minify
+                && matches!(&self.argument, Expression::NumericLiteral(lit) if lit.value.is_sign_positive() && lit.value.is_infinite());
+            if is_delete_infinity {
+                p.print_str("(0,");
+                p.print_soft_space();
+            }
             self.argument.print_expr(p, Precedence::Exponentiation, ctx);
+            if is_delete_infinity{
+                p.print_ascii_byte(b')');
+            }
         });
     }
 }
@@ -2246,7 +2356,9 @@ impl Gen for ClassBody<'_> {
         p.print_curly_braces(self.span, self.body.is_empty(), |p| {
             for item in &self.body {
                 p.print_semicolon_if_needed();
-                p.print_leading_comments(item.span().start);
+                if p.print_comments {
+                    p.print_leading_comments(item.span().start);
+                }
                 p.print_indent();
                 item.print(p, ctx);
             }
@@ -3603,7 +3715,9 @@ impl Gen for TSInterfaceDeclaration<'_> {
         p.print_soft_space();
         p.print_curly_braces(self.body.span, self.body.body.is_empty(), |p| {
             for item in &self.body.body {
-                p.print_leading_comments(item.span().start);
+                if p.print_comments {
+                    p.print_leading_comments(item.span().start);
+                }
                 p.print_indent();
                 item.print(p, ctx);
                 p.print_semicolon();
@@ -3637,7 +3751,9 @@ impl Gen for TSEnumDeclaration<'_> {
         p.print_space_before_identifier();
         p.print_curly_braces(self.span, self.members.is_empty(), |p| {
             for member in &self.members {
-                p.print_leading_comments(member.span().start);
+                if p.print_comments {
+                    p.print_leading_comments(member.span().start);
+                }
                 p.print_indent();
                 member.print(p, ctx);
                 p.print_comma();

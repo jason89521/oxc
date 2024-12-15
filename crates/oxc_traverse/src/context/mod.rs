@@ -590,19 +590,19 @@ impl<'a> TraverseCtx<'a> {
         self.scoping.delete_reference_for_identifier(ident);
     }
 
-    /// Determine whether evaluating the specific input `node` is a consequenceless reference.
+    /// Rename symbol.
     ///
-    /// i.e. evaluating it won't result in potentially arbitrary code from being run.
-    /// The following are allowed and determined not to cause side effects:
+    /// Preserves original order of bindings for scope.
     ///
-    /// - `this` expressions
-    /// - `super` expressions
-    /// - Bound identifiers which are not mutated
+    /// The following must be true for successful operation:
+    /// * Binding exists in specified scope for `symbol_id`.
+    /// * No binding already exists in scope for `new_name`.
     ///
-    /// This is a shortcut for `ctx.scoping.is_static`.
-    #[inline]
-    pub fn is_static(&self, expr: &Expression) -> bool {
-        self.scoping.is_static(expr)
+    /// Panics in debug mode if either of the above are not satisfied.
+    ///
+    /// This is a shortcut for `ctx.scoping.rename_symbol`.
+    pub fn rename_symbol(&mut self, symbol_id: SymbolId, scope_id: ScopeId, new_name: CompactStr) {
+        self.scoping.rename_symbol(symbol_id, scope_id, new_name);
     }
 }
 

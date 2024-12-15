@@ -6,21 +6,18 @@ use std::mem;
 use oxc_allocator::Box as ArenaBox;
 use oxc_ast::{ast::*, NONE};
 use oxc_span::SPAN;
-use oxc_syntax::{
-    reference::{ReferenceFlags, ReferenceId},
-    symbol::SymbolId,
-};
+use oxc_syntax::{reference::ReferenceId, symbol::SymbolId};
 use oxc_traverse::{
     ast_operations::get_var_name_from_node, Ancestor, BoundIdentifier, TraverseCtx,
 };
 
-use crate::common::helper_loader::Helper;
+use crate::{common::helper_loader::Helper, TransformCtx};
 
 use super::{
     private_props::ResolvedPrivateProp,
     utils::{
-        assert_expr_neither_parenthesis_nor_typescript_syntax, create_array, create_assignment,
-        create_underscore_ident_name,
+        create_assignment, create_underscore_ident_name,
+        debug_assert_expr_is_not_parenthesis_or_typescript_syntax,
     },
     ClassProperties,
 };
@@ -28,8 +25,11 @@ use super::{
 impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     /// Transform private field expression.
     ///
-    /// Instance prop: `object.#prop` -> `_classPrivateFieldGet2(_prop, object)`
-    /// Static prop: `object.#prop` -> `_assertClassBrand(Class, object, _prop)._`
+    /// Not loose:
+    /// * Instance prop: `object.#prop` -> `_classPrivateFieldGet2(_prop, object)`
+    /// * Static prop: `object.#prop` -> `_assertClassBrand(Class, object, _prop)._`
+    ///
+    /// Loose: `object.#prop` -> `_classPrivateFieldLooseBase(object, _prop)[_prop]`
     //
     // `#[inline]` so that compiler sees that `expr` is an `Expression::PrivateFieldExpression`.
     #[inline]
@@ -56,10 +56,22 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         };
         let ResolvedPrivateProp { prop_binding, class_bindings, is_static, is_declaration } =
             prop_details;
-        let prop_ident = prop_binding.create_read_expression(ctx);
 
         // TODO: Move this to top of function once `lookup_private_property` does not return `Option`
         let PrivateFieldExpression { span, object, .. } = field_expr.unbox();
+
+        if self.private_fields_as_properties {
+            // `_classPrivateFieldLooseBase(object, _prop)[_prop]`
+            return Expression::from(Self::create_private_field_member_expr_loose(
+                object,
+                prop_binding,
+                span,
+                self.ctx,
+                ctx,
+            ));
+        }
+
+        let prop_ident = prop_binding.create_read_expression(ctx);
 
         if is_static {
             // TODO: Ensure there are tests for nested classes with references to private static props
@@ -132,10 +144,13 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
 
     /// Transform call expression where callee is private field.
     ///
-    /// Instance prop: `object.#prop(arg)` -> `_classPrivateFieldGet2(_prop, object).call(object, arg)`
-    /// Static prop: `object.#prop(arg)` -> `_assertClassBrand(Class, object, _prop)._.call(object, arg)`
+    /// Not loose:
+    /// * Instance prop: `object.#prop(arg)` -> `_classPrivateFieldGet2(_prop, object).call(object, arg)`
+    /// * Static prop: `object.#prop(arg)` -> `_assertClassBrand(Class, object, _prop)._.call(object, arg)`
     ///
-    /// Output in both cases contains a `CallExpression`, so mutate existing `CallExpression`
+    /// Loose: `object.#prop(arg)` -> `_classPrivateFieldLooseBase(object, _prop)[_prop](arg)`
+    ///
+    /// Output in all cases contains a `CallExpression`, so mutate existing `CallExpression`
     /// rather than creating a new one.
     //
     // `#[inline]` so that compiler sees that `expr` is an `Expression::CallExpression`
@@ -161,6 +176,23 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         let Expression::PrivateFieldExpression(field_expr) = &mut call_expr.callee else {
             unreachable!()
         };
+
+        if self.private_fields_as_properties {
+            // `object.#prop(arg)` -> `_classPrivateFieldLooseBase(object, _prop)[_prop](arg)`
+            let prop_details = self.private_props_stack.find(&field_expr.field);
+            // TODO: Should never be `None` - only because implementation is incomplete.
+            let Some(ResolvedPrivateProp { prop_binding, .. }) = prop_details else { return };
+
+            let object = ctx.ast.move_expression(&mut field_expr.object);
+            call_expr.callee = Expression::from(Self::create_private_field_member_expr_loose(
+                object,
+                prop_binding,
+                field_expr.span,
+                self.ctx,
+                ctx,
+            ));
+            return;
+        }
 
         // TODO: Should never be `None` - only because implementation is incomplete.
         let Some((callee, object)) = self.transform_private_field_callee(field_expr, ctx) else {
@@ -281,6 +313,12 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     }
 
     /// Transform assignment to private field.
+    ///
+    /// Not loose:
+    /// * Instance: See [`ClassProperties::transform_instance_assignment_expression`].
+    /// * Static: See [`ClassProperties::transform_static_assignment_expression`].
+    ///
+    /// Loose: `object.#prop = value` -> `_classPrivateFieldLooseBase(object, _prop)[_prop] = value`.
     //
     // `#[inline]` so that compiler sees that `expr` is an `Expression::AssignmentExpression`
     #[inline]
@@ -313,6 +351,21 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         let Some(prop_details) = prop_details else { return };
         let ResolvedPrivateProp { prop_binding, class_bindings, is_static, is_declaration } =
             prop_details;
+
+        if self.private_fields_as_properties {
+            // `object.#prop = value` -> `_classPrivateFieldLooseBase(object, _prop)[_prop] = value`
+            // Same for all other assignment operators e.g. `+=`, `&&=`, `??=`.
+            let object = ctx.ast.move_expression(&mut field_expr.object);
+            let replacement = Self::create_private_field_member_expr_loose(
+                object,
+                prop_binding,
+                field_expr.span,
+                self.ctx,
+                ctx,
+            );
+            assign_expr.left = AssignmentTarget::from(replacement);
+            return;
+        }
 
         // Note: `transform_static_assignment_expression` and `transform_instance_assignment_expression`
         // are marked `#[inline]`, so hopefully compiler will see these clones of `BoundIdentifier`s
@@ -589,7 +642,7 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
 
     /// Transform update expression (`++` or `--`) where argument is private field.
     ///
-    /// Instance prop:
+    /// Instance prop (not loose):
     ///
     /// * `++object.#prop` ->
     /// ```js
@@ -614,9 +667,9 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     /// )
     /// ```
     ///
-    /// Static prop:
+    /// Static prop (not loose):
     ///
-    /// * `++object.#prop++` ->
+    /// * `++object.#prop` ->
     /// ```js
     /// _prop._ = _assertClassBrand(
     ///   Class, object,
@@ -638,6 +691,10 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     ///   _object$prop2
     /// )
     /// ```
+    ///
+    /// Loose:
+    /// `++object.#prop` -> `++_classPrivateFieldLooseBase(object, _prop)[_prop]`
+    /// `object.#prop++` -> `_classPrivateFieldLooseBase(object, _prop)[_prop]++`
     ///
     /// Output in all cases contains an `UpdateExpression`, so mutate existing `UpdateExpression`
     /// rather than creating a new one.
@@ -674,6 +731,20 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         let Some(prop_details) = prop_details else { return };
         let ResolvedPrivateProp { prop_binding, class_bindings, is_static, is_declaration } =
             prop_details;
+
+        if self.private_fields_as_properties {
+            // `object.#prop++` -> `_classPrivateFieldLooseBase(object, _prop)[_prop]++`
+            let object = ctx.ast.move_expression(&mut field_expr.object);
+            let replacement = Self::create_private_field_member_expr_loose(
+                object,
+                prop_binding,
+                field_expr.span,
+                self.ctx,
+                ctx,
+            );
+            update_expr.argument = SimpleAssignmentTarget::from(replacement);
+            return;
+        }
 
         let prop_ident = prop_binding.create_read_expression(ctx);
         let prop_ident2 = prop_binding.create_read_expression(ctx);
@@ -888,8 +959,9 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         if matches!(element, ChainElement::PrivateFieldExpression(_)) {
             // The PrivateFieldExpression must be transformed, so we can convert it to a normal expression here.
             let mut chain_expr = Self::convert_chain_expression_to_expression(expr, ctx);
-            let result =
-                self.transform_private_field_expression_of_chain_expression(&mut chain_expr, ctx);
+            let result = self
+                .transform_private_field_expression_of_chain_expression(&mut chain_expr, ctx)
+                .expect("The ChainExpression must contain at least one optional expression, so it can never be `None` here.");
             Some((result, chain_expr))
         } else if let Some(result) = self.transform_chain_expression_element(element, ctx) {
             let chain_expr = Self::convert_chain_expression_to_expression(expr, ctx);
@@ -930,10 +1002,9 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         expr: &mut Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) -> Option<Expression<'a>> {
-        assert_expr_neither_parenthesis_nor_typescript_syntax(expr);
         match expr {
             Expression::PrivateFieldExpression(_) => {
-                Some(self.transform_private_field_expression_of_chain_expression(expr, ctx))
+                self.transform_private_field_expression_of_chain_expression(expr, ctx)
             }
             match_member_expression!(Expression) => self
                 .transform_member_expression_of_chain_expression(
@@ -944,7 +1015,10 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
                 self.transform_call_expression_of_chain_expression(call, ctx)
             }
             _ => {
-                assert_expr_neither_parenthesis_nor_typescript_syntax(expr);
+                debug_assert_expr_is_not_parenthesis_or_typescript_syntax(
+                    expr,
+                    &self.ctx.source_path,
+                );
                 None
             }
         }
@@ -1016,30 +1090,34 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         Some(result)
     }
 
+    /// Transform private field expression of chain expression.
+    ///
+    /// Returns `None` if the `expr` doesn't contain any optional expression.
     fn transform_private_field_expression_of_chain_expression(
         &mut self,
         expr: &mut Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
-    ) -> Expression<'a> {
+    ) -> Option<Expression<'a>> {
         let Expression::PrivateFieldExpression(field_expr) = expr else { unreachable!() };
 
+        let is_optional = field_expr.optional;
         let object = &mut field_expr.object;
-        let left = self.transform_first_optional_expression(object, ctx).unwrap_or_else(|| {
-            // Even though no optional expression, we still need to transform the object
-            self.transform_expression_to_wrap_nullish_check(object, ctx)
-        });
+
+        let result = if is_optional {
+            Some(self.transform_expression_to_wrap_nullish_check(object, ctx))
+        } else {
+            self.transform_first_optional_expression(object, ctx)
+        };
 
         if matches!(ctx.ancestor(1), Ancestor::CallExpressionCallee(_)) {
             // `(Foo?.#m)();` -> `(Foo === null || Foo === void 0 ? void 0 : _m._.bind(Foo))();`
             // ^^^^^^^^^^^^ is a call expression, we need to bind the proper context
-            *expr = self
-                .transform_bindable_private_field(field_expr, ctx)
-                .unwrap_or_else(|| unreachable!());
+            *expr = self.transform_bindable_private_field(field_expr, ctx).unwrap();
         } else {
             self.transform_private_field_expression(expr, ctx);
         }
 
-        left
+        result
     }
 
     fn transform_member_expression_of_chain_expression(
@@ -1048,14 +1126,14 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         ctx: &mut TraverseCtx<'a>,
     ) -> Option<Expression<'a>> {
         let is_optional = member.optional();
-        let object = member.object_mut();
+        let object = member.object_mut().get_inner_expression_mut();
         let result = self.transform_chain_element_recursively(object, ctx)?;
-        if is_optional {
+        if is_optional && !object.is_identifier_reference() {
             // `o?.Foo.#self.self?.self.unicorn;` -> `(result ? void 0 : object)?.self.unicorn`
             //  ^^^^^^^^^^^^^^^^^ the object has transformed, if the current member is optional,
             //                    then we need to wrap it to a conditional expression
-            let object_owner = ctx.ast.move_expression(object);
-            *object = Self::wrap_conditional_check(result, object_owner, ctx);
+            let owned_object = ctx.ast.move_expression(object);
+            *object = Self::wrap_conditional_check(result, owned_object, ctx);
             None
         } else {
             Some(result)
@@ -1068,6 +1146,7 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         ctx: &mut TraverseCtx<'a>,
     ) -> Option<Expression<'a>> {
         let is_optional = call_expr.optional;
+
         let callee = call_expr.callee.get_inner_expression_mut();
         if matches!(callee, Expression::PrivateFieldExpression(_)) {
             let result = self.transform_first_optional_expression(callee, ctx);
@@ -1080,9 +1159,9 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
             return result;
         }
 
-        let result = self.transform_chain_element_recursively(callee, ctx)?;
+        let result = self.transform_chain_element_recursively(callee, ctx);
         if !is_optional {
-            return Some(result);
+            return result;
         }
 
         // `o?.Foo.#self.getSelf?.()?.self.#m();`
@@ -1091,6 +1170,7 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         //                            then use it as a first argument of `getSelf` call.
         //
         // TODO(improve-on-babel): Consider remove this logic, because it seems no runtime behavior change.
+        let result = result?;
         let object = callee.to_member_expression_mut().object_mut();
         let (assignment, context) = self.duplicate_object(ctx.ast.move_expression(object), ctx);
         *object = assignment;
@@ -1115,9 +1195,17 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         object: &mut Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) -> Expression<'a> {
-        let owned_object = ctx.ast.move_expression(object.get_inner_expression_mut());
-        let owned_object =
-            Self::ensure_optional_expression_wrapped_by_chain_expression(owned_object, ctx);
+        let mut owned_object = ctx.ast.move_expression(object.get_inner_expression_mut());
+
+        let owned_object = if let Some(result) =
+            self.transform_chain_element_recursively(&mut owned_object, ctx)
+        {
+            // If the `object` contains PrivateFieldExpression, we need to transform it first.
+            Self::wrap_conditional_check(result, owned_object, ctx)
+        } else {
+            Self::ensure_optional_expression_wrapped_by_chain_expression(owned_object, ctx)
+        };
+
         let (assignment, reference1, reference2) = self.duplicate_object_twice(owned_object, ctx);
         *object = reference1;
         self.wrap_nullish_check(assignment, reference2, ctx)
@@ -1228,22 +1316,37 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     ) -> Expression<'a> {
         let Expression::CallExpression(call) = expr else { unreachable!() };
 
-        let callee = &mut call.callee;
         // `Foo?.bar()?.zoo?.()`
-        // ^^^^^^^^^^^^^^^^^ callee is a member expression
         // ^^^^^^^^^^^ object
-        let object = callee.to_member_expression_mut().object_mut();
+        // ^^^^^^^^^^^^^^^^^ callee is a member expression
+        let callee = &mut call.callee;
+        let callee_member = callee.to_member_expression_mut();
+        let is_optional_callee = callee_member.optional();
+        let object = callee_member.object_mut().get_inner_expression_mut();
 
         let context = if let Some(result) = self.transform_chain_element_recursively(object, ctx) {
-            // `o?.Foo.#self.getSelf?.().#m?.();` -> `(_ref = o === null || o === void 0 ? void 0 : (_babelHelpers$assertC =
-            //                                        babelHelpers.assertClassBrand(Foo, o.Foo, _self)._).getSelf)`
-            // ^^^^^^^^^^^^^^^^^^^^^^ to make sure get `getSelf` call has a proper context, we need to assign
-            //                        the parent of callee (i.e `o?.Foo.#self`) to a temp variable,
-            //                        and then use it as a first argument of `_ref.call`.
-            let (assignment, context) = self.duplicate_object(ctx.ast.move_expression(object), ctx);
-            *object = assignment;
-            *callee = Self::wrap_conditional_check(result, ctx.ast.move_expression(callee), ctx);
-            context
+            if is_optional_callee {
+                // `o?.Foo.#self?.getSelf?.().#x;` -> `(_ref$getSelf = (_ref2 = _ref = o === null || o === void 0 ?
+                //              ^^ is optional         void 0 : babelHelpers.assertClassBrand(Foo, o.Foo, _self)._)`
+                *object =
+                    Self::wrap_conditional_check(result, ctx.ast.move_expression(object), ctx);
+                let (assignment, context) =
+                    self.duplicate_object(ctx.ast.move_expression(object), ctx);
+                *object = assignment;
+                context
+            } else {
+                // `o?.Foo.#self.getSelf?.().#m?.();` -> `(_ref = o === null || o === void 0 ? void 0 : (_babelHelpers$assertC =
+                //                                        babelHelpers.assertClassBrand(Foo, o.Foo, _self)._).getSelf)`
+                // ^^^^^^^^^^^^^^^^^^^^^^ to make sure get `getSelf` call has a proper context, we need to assign
+                //                        the parent of callee (i.e `o?.Foo.#self`) to a temp variable,
+                //                        and then use it as a first argument of `_ref.call`.
+                let (assignment, context) =
+                    self.duplicate_object(ctx.ast.move_expression(object), ctx);
+                *object = assignment;
+                *callee =
+                    Self::wrap_conditional_check(result, ctx.ast.move_expression(callee), ctx);
+                context
+            }
         } else {
             // `Foo?.bar()?.zoo?.().#x;` -> `(_Foo$bar$zoo = (_Foo$bar = Foo?.bar())?.zoo)`
             // ^^^^^^^^^^^^^^^^ this is a optional function call, to make sure it has a proper context,
@@ -1256,8 +1359,8 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
 
         // After the below transformation, the `callee` will be a temp variable.
         let result = self.transform_expression_to_wrap_nullish_check(callee, ctx);
-        let callee_owner = ctx.ast.move_expression(callee);
-        Self::substitute_callee_and_insert_context(call, callee_owner, context, ctx);
+        let owned_callee = ctx.ast.move_expression(callee);
+        Self::substitute_callee_and_insert_context(call, owned_callee, context, ctx);
         result
     }
 
@@ -1362,17 +1465,26 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
 
     /// Transform tagged template expression where tag is a private field.
     ///
-    /// Instance prop:
+    /// Instance prop (not loose):
     /// * "object.#prop`xyz`"
     ///   -> "_classPrivateFieldGet(_prop, object).bind(object)`xyz`"
     /// * "object.obj.#prop`xyz`"
     ///   -> "_classPrivateFieldGet(_prop, _object$obj = object.obj).bind(_object$obj)`xyz`"
     ///
-    /// Static prop:
+    /// Static prop (not loose):
     /// * "object.#prop`xyz`"
     ///   -> "_assertClassBrand(Class, object, _prop)._.bind(object)`xyz`"
     /// * "object.obj.#prop`xyz`"
     ///   -> "_assertClassBrand(Class, (_object$obj = object.obj), _prop)._.bind(_object$obj)`xyz`"
+    ///
+    /// Loose:
+    /// ```js
+    /// object.#prop`xyz`
+    /// ```
+    /// ->
+    /// ```js
+    /// _classPrivateFieldLooseBase(object, _prop)[_prop]`xyz`
+    /// ```
     //
     // `#[inline]` so that compiler sees that `expr` is an `Expression::TaggedTemplateExpression`
     #[inline]
@@ -1385,9 +1497,43 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
         let Expression::PrivateFieldExpression(field_expr) = &mut tagged_temp_expr.tag else {
             return;
         };
-        if let Some(tag) = self.transform_bindable_private_field(field_expr, ctx) {
+
+        if let Some(tag) = self.transform_tagged_template_expression_impl(field_expr, ctx) {
             tagged_temp_expr.tag = tag;
         };
+    }
+
+    fn transform_tagged_template_expression_impl(
+        &mut self,
+        field_expr: &mut PrivateFieldExpression<'a>,
+        ctx: &mut TraverseCtx<'a>,
+    ) -> Option<Expression<'a>> {
+        if self.private_fields_as_properties {
+            // "object.#prop`xyz`" -> "_classPrivateFieldLooseBase(object, _prop)[_prop]`xyz`"
+            //
+            // Babel adds an additional `.bind(object)`:
+            // ```js
+            // _classPrivateFieldLooseBase(object, _prop)[_prop].bind(object)`xyz`"
+            // //                                               ^^^^^^^^^^^^^
+            // ```
+            // But this is not needed, so we omit it.
+            //
+            // TODO: Should never be `None` - only because implementation is incomplete.
+            let ResolvedPrivateProp { prop_binding, .. } =
+                self.private_props_stack.find(&field_expr.field)?;
+
+            let object = ctx.ast.move_expression(&mut field_expr.object);
+            let replacement = Self::create_private_field_member_expr_loose(
+                object,
+                prop_binding,
+                field_expr.span,
+                self.ctx,
+                ctx,
+            );
+            Some(Expression::from(replacement))
+        } else {
+            self.transform_bindable_private_field(field_expr, ctx)
+        }
     }
 
     fn transform_bindable_private_field(
@@ -1461,13 +1607,12 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     ///
     /// Returns 2 `Expression`s. The first must be inserted into output first.
     fn duplicate_object(
-        &mut self,
+        &self,
         object: Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) -> (Expression<'a>, Expression<'a>) {
-        let (object1, duplicates) = self.duplicate_object_multiple::<1>(object, ctx);
-        let [object2] = duplicates;
-        (object1, object2)
+        debug_assert_expr_is_not_parenthesis_or_typescript_syntax(&object, &self.ctx.source_path);
+        self.ctx.duplicate_expression(object, false, ctx)
     }
 
     /// Duplicate object to be used in triple.
@@ -1481,61 +1626,40 @@ impl<'a, 'ctx> ClassProperties<'a, 'ctx> {
     ///
     /// Returns 3 `Expression`s. The first must be inserted into output first.
     fn duplicate_object_twice(
-        &mut self,
+        &self,
         object: Expression<'a>,
         ctx: &mut TraverseCtx<'a>,
     ) -> (Expression<'a>, Expression<'a>, Expression<'a>) {
-        let (object1, duplicates) = self.duplicate_object_multiple::<2>(object, ctx);
-        let [object2, object3] = duplicates;
-        (object1, object2, object3)
+        debug_assert_expr_is_not_parenthesis_or_typescript_syntax(&object, &self.ctx.source_path);
+        self.ctx.duplicate_expression_twice(object, false, ctx)
     }
 
-    /// Duplicate object `N + 1` times.
+    /// `_classPrivateFieldLooseBase(object, _prop)[_prop]`.
     ///
-    /// If `object` may have side effects, create a temp var `_object` and assign to it.
-    ///
-    /// * `this` -> `this`, [`this`; N]
-    /// * Bound identifier `object` -> `object`, [`object`; N]
-    /// * Unbound identifier `object` -> `_object = object`, [`_object`; N]
-    /// * Anything else `foo()` -> `_foo = foo()`, [`_foo`; N]
-    ///
-    /// Returns `N + 1` `Expression`s. The first must be inserted into output first.
-    fn duplicate_object_multiple<const N: usize>(
-        &mut self,
+    /// Takes `&TransformCtx` instead of `&self` to allow passing a `&BoundIdentifier<'a>` returned by
+    /// `self.private_props_stack.find()`, which takes a partial mut borrow of `self`.
+    fn create_private_field_member_expr_loose(
         object: Expression<'a>,
+        prop_binding: &BoundIdentifier<'a>,
+        span: Span,
+        transform_ctx: &TransformCtx<'a>,
         ctx: &mut TraverseCtx<'a>,
-    ) -> (Expression<'a>, [Expression<'a>; N]) {
-        assert_expr_neither_parenthesis_nor_typescript_syntax(&object);
-
-        // TODO: Handle if in a function's params
-        let temp_var_binding = match &object {
-            Expression::Identifier(ident) => {
-                let reference = ctx.symbols_mut().get_reference_mut(ident.reference_id());
-                if let Some(symbol_id) = reference.symbol_id() {
-                    // Reading bound identifier cannot have side effects, so no need for temp var
-                    let binding = BoundIdentifier::new(ident.name.clone(), symbol_id);
-                    let duplicates =
-                        create_array(|| binding.create_spanned_read_expression(ident.span, ctx));
-                    return (object, duplicates);
-                }
-
-                // Previously `x += 1` (`x` read + write), but moving to `_x = x` (`x` read only)
-                *reference.flags_mut() = ReferenceFlags::Read;
-
-                self.ctx.var_declarations.create_uid_var(&ident.name, ctx)
-            }
-            Expression::ThisExpression(this) => {
-                // Reading `this` cannot have side effects, so no need for temp var
-                let duplicates = create_array(|| ctx.ast.expression_this(this.span));
-                return (object, duplicates);
-            }
-            _ => self.ctx.var_declarations.create_uid_var_based_on_node(&object, ctx),
-        };
-
-        let object1 = create_assignment(&temp_var_binding, object, ctx);
-        let references = create_array(|| temp_var_binding.create_read_expression(ctx));
-
-        (object1, references)
+    ) -> MemberExpression<'a> {
+        let call_expr = transform_ctx.helper_call_expr(
+            Helper::ClassPrivateFieldLooseBase,
+            SPAN,
+            ctx.ast.vec_from_array([
+                Argument::from(object),
+                Argument::from(prop_binding.create_read_expression(ctx)),
+            ]),
+            ctx,
+        );
+        ctx.ast.member_expression_computed(
+            span,
+            call_expr,
+            prop_binding.create_read_expression(ctx),
+            false,
+        )
     }
 
     /// `_classPrivateFieldGet2(_prop, object)`

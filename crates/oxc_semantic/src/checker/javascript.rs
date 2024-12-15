@@ -8,9 +8,10 @@ use oxc_span::{GetSpan, ModuleKind, Span};
 use oxc_syntax::{
     number::NumberBase,
     operator::{AssignmentOperator, BinaryOperator, LogicalOperator, UnaryOperator},
+    scope::ScopeFlags,
 };
 
-use crate::{builder::SemanticBuilder, diagnostics::redeclaration, scope::ScopeFlags, AstNode};
+use crate::{builder::SemanticBuilder, diagnostics::redeclaration, AstNode};
 
 pub fn check_duplicate_class_elements(ctx: &SemanticBuilder<'_>) {
     let classes = &ctx.class_table_builder.classes;
@@ -975,8 +976,8 @@ fn super_private(span: Span) -> OxcDiagnostic {
 
 pub fn check_member_expression(member_expr: &MemberExpression, ctx: &SemanticBuilder<'_>) {
     if let MemberExpression::PrivateFieldExpression(private_expr) = member_expr {
-        // super.#m
-        if let Expression::Super(_) = &private_expr.object {
+        // `super.#m`
+        if private_expr.object.is_super() {
             ctx.error(super_private(private_expr.span));
         }
     }

@@ -4,6 +4,44 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project does not adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) until v1.0.0.
 
+## [0.15.2] - 2024-12-14
+
+### Refactor
+
+- e55ab24 linter: Use `Expression::is_super` (#7850) (overlookmotel)
+
+## [0.15.1] - 2024-12-13
+
+### Bug Fixes
+
+- 2b187e5 linter: Fix configuration casing for `typescript/no_this_alias` (#7836) (Boshen)
+- 06e6d38 linter: Fix unicorn/prefer-query-selector to use the correct replacement for getElementsByClassName (#7796) (Nicholas Rayburn)
+- 7a83230 semantic: Missing reference when `export default` references a type alias binding (#7813) (Dunqing)
+
+## [0.15.0] - 2024-12-10
+
+- 39b9c5d linter: [**BREAKING**] Remove unmaintained security plugin (#7773) (Boshen)
+
+### Features
+
+- 065f7dc linter: Support `expectTypeOf`, `assert` and `assertType` in `vitest/expect-expect` (#7742) (Yuichiro Yamashita)
+- 3d5f0a1 linter/no_restricted_imports: Add the no_restricted_imports rules (#7629) (Guillaume Piedigrossi)
+
+### Bug Fixes
+
+- ad27b20 linter: Only resolve esm files for import plugin (#7720) (Boshen)
+- 5e6053f linter: False positive in `eslint/yoda` (#7719) (dalaoshu)
+
+### Refactor
+
+- c6a19aa linter: Remove unused `serde` features (#7738) (Boshen)
+- b9a2b35 linter: Remove `aho-corasick` (#7718) (Boshen)
+
+### Testing
+
+- 62f0a22 linter: Port `react-jsx-uses-vars` rules to no_unused_vars (#7731) (Tyler Earls)
+- 02f9903 linter: Add regression tests for `import/namespace` (#7723) (dalaoshu)
+
 ## [0.14.1] - 2024-12-06
 
 - ebc80f6 ast: [**BREAKING**] Change 'raw' from &str to Option<Atom> (#7547) (Song Gao)

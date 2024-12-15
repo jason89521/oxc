@@ -100,16 +100,16 @@ impl<'a> TypeScriptEnum<'a> {
         let statements = self.transform_ts_enum_members(&mut decl.members, &param_binding, ctx);
         let body = ast.alloc_function_body(decl.span, ast.vec(), statements);
         let callee = Expression::FunctionExpression(ctx.ast.alloc_function_with_scope_id(
-            FunctionType::FunctionExpression,
             SPAN,
+            FunctionType::FunctionExpression,
             None,
             false,
             false,
             false,
-            None::<TSTypeParameterDeclaration>,
-            None::<TSThisParameter>,
+            NONE,
+            NONE,
             params,
-            None::<TSTypeAnnotation>,
+            NONE,
             Some(body),
             func_scope_id,
         ));

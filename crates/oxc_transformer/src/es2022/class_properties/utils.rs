@@ -1,10 +1,7 @@
 //! ES2022: Class Properties
 //! Utility functions.
 
-use std::{
-    mem::{ManuallyDrop, MaybeUninit},
-    ptr,
-};
+use std::path::PathBuf;
 
 use oxc_ast::ast::*;
 use oxc_span::SPAN;
@@ -59,27 +56,18 @@ pub(super) fn create_underscore_ident_name<'a>(ctx: &mut TraverseCtx<'a>) -> Ide
     ctx.ast.identifier_name(SPAN, Atom::from("_"))
 }
 
-#[inline]
-pub(super) fn assert_expr_neither_parenthesis_nor_typescript_syntax(expr: &Expression) {
+/// Debug assert that an `Expression` is not `ParenthesizedExpression` or TS syntax
+/// (e.g. `TSAsExpression`).
+//
+// `#[inline(always)]` because this is a no-op in release mode
+#[expect(clippy::inline_always)]
+#[inline(always)]
+pub(super) fn debug_assert_expr_is_not_parenthesis_or_typescript_syntax(
+    expr: &Expression,
+    path: &PathBuf,
+) {
     debug_assert!(
         !(matches!(expr, Expression::ParenthesizedExpression(_)) || expr.is_typescript_syntax()),
-        "Should not be: {expr:?}",
+        "Should not be: {expr:?} in {path:?}",
     );
-}
-
-/// Create array of length `N`, with each item initialized with provided function `init`.
-#[inline]
-pub(super) fn create_array<const N: usize, T, I: FnMut() -> T>(mut init: I) -> [T; N] {
-    // https://github.com/rust-lang/rust/issues/62875#issuecomment-513834029
-    // https://github.com/rust-lang/rust/issues/61956
-    let mut array: [MaybeUninit<T>; N] = [const { MaybeUninit::uninit() }; N];
-    for elem in &mut array {
-        elem.write(init());
-    }
-    // Wrapping in `ManuallyDrop` should not be necessary because `MaybeUninit` does not impl `Drop`,
-    // but do it anyway just to make sure, as it's mentioned in issues above.
-    let mut array = ManuallyDrop::new(array);
-    // SAFETY: All elements of array are initialized.
-    // `[MaybeUninit<T>; N]` and `[T; N]` have equivalent layout.
-    unsafe { ptr::from_mut(&mut array).cast::<[T; N]>().read() }
 }
